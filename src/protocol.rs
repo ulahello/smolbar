@@ -2,10 +2,10 @@ use rgb::RGBA16;
 use signal_hook::consts::signal::*;
 
 pub struct Header {
-    version: i32,
-    click_events: bool,
-    cont_signal: i32,
-    stop_signal: i32,
+    pub version: i32,
+    pub click_events: bool,
+    pub cont_signal: i32,
+    pub stop_signal: i32,
 }
 
 impl Default for Header {

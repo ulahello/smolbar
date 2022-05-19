@@ -24,7 +24,7 @@ fn try_main() -> Result<(), Error> {
             .filter(|signal| !consts::FORBIDDEN.contains(signal)),
     )?;
 
-    for signal in signals.wait() {
+    for signal in signals.forever() {
         let sig = signal as i32;
 
         if sig == header.cont_signal {

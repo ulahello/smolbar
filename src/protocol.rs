@@ -73,3 +73,16 @@ pub enum Markup {
     Pango,
     None,
 }
+
+pub struct ClickEvent {
+    name: String,
+    instance: String,
+    x: i32,
+    y: i32,
+    button: i32,
+    event: i32,
+    relative_x: i32,
+    relative_y: i32,
+    width: u32,
+    height: u32,
+}

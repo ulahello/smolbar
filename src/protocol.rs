@@ -3,18 +3,18 @@ use signal_hook::consts::signal::*;
 
 pub struct Header {
     version: i32,
-    click_events: Option<bool>,
-    cont_signal: Option<i32>,
-    stop_signal: Option<i32>,
+    click_events: bool,
+    cont_signal: i32,
+    stop_signal: i32,
 }
 
 impl Default for Header {
     fn default() -> Self {
         Self {
             version: 1,
-            click_events: Some(false),
-            cont_signal: Some(SIGCONT),
-            stop_signal: Some(SIGSTOP),
+            click_events: false,
+            cont_signal: SIGCONT,
+            stop_signal: SIGSTOP,
         }
     }
 }

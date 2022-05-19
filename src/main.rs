@@ -3,6 +3,7 @@ use signal_hook::iterator::Signals;
 use std::io::Error;
 use std::process;
 
+use smolbar::bar::Bar;
 use smolbar::protocol::Header;
 
 fn main() {
@@ -13,8 +14,9 @@ fn main() {
 }
 
 fn try_main() -> Result<(), Error> {
-    /* get header */
-    let header = Header::default();
+    /* get bar */
+    let bar: Box<dyn Bar> = todo!();
+    let header = bar.header();
 
     /* handle signals */
     let mut signals = Signals::new(
@@ -28,7 +30,7 @@ fn try_main() -> Result<(), Error> {
         let sig = signal as i32;
 
         if sig == header.cont_signal {
-            todo!("continue");
+            bar.cont();
         } else if sig == header.stop_signal {
             return Ok(());
         } else {

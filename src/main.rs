@@ -1,7 +1,9 @@
 use crossbeam_channel::{bounded, RecvTimeoutError, Sender};
+use dirs::config_dir;
 use serde_derive::{Deserialize, Serialize};
+use std::env::{self, VarError};
 use std::fs;
-use std::io::Error;
+use std::io::{stderr, Error, Write};
 use std::process::{self, Command};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
@@ -12,6 +14,8 @@ use smolbar::bar::Bar;
 use smolbar::protocol::{Body, Header};
 use smolbar::runtime;
 
+const CONFIG_VAR: &str = "CONFIG_PATH";
+
 fn main() {
     if let Err(err) = try_main() {
         eprintln!("fatal: {}", err);
@@ -20,8 +24,44 @@ fn main() {
 }
 
 fn try_main() -> Result<(), Error> {
+    /* get configuration file */
+    let path = match env::var(CONFIG_VAR) {
+        Ok(val) => {
+            writeln!(stderr(), "info: set config path to \"{}\"", val)?;
+            val.into()
+        }
+        Err(err) => {
+            let env_status = match err {
+                VarError::NotPresent => "defined",
+                VarError::NotUnicode(_) => "unicode",
+            };
+
+            if let Some(mut fallback) = config_dir() {
+                fallback.push("smolbar");
+                fallback.push("config.toml");
+
+                writeln!(
+                    stderr(),
+                    "info: environment variable {} not {}, fallback to \"{}\"",
+                    CONFIG_VAR,
+                    env_status,
+                    fallback.display()
+                )?;
+
+                fallback
+            } else {
+                return writeln!(
+                    stderr(),
+                    "info: environment variable {} not {}, fallback not available",
+                    CONFIG_VAR,
+                    env_status
+                );
+            }
+        }
+    };
+
     /* read bar from config */
-    let config = fs::read_to_string("examples/test.toml")?;
+    let config = fs::read_to_string(path)?;
     let toml: Value = toml::from_str(&config)?;
     let mut bar = Smolbar {
         header: Header::default(),

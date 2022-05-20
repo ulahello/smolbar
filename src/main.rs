@@ -43,6 +43,7 @@ fn try_main() -> Result<(), Error> {
     Ok(())
 }
 
+#[derive(Debug)]
 pub struct Smolbar {
     header: Header,
     blocks: Vec<Block>,
@@ -63,6 +64,7 @@ impl Bar for Smolbar {
     fn cont(&mut self) {}
 }
 
+#[derive(Debug)]
 pub struct Block {
     body: Arc<Mutex<Body>>,
     cmd: (Sender<bool>, JoinHandle<()>),

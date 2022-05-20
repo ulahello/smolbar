@@ -1,7 +1,7 @@
 use rgb::RGBA16;
 use signal_hook::consts::signal::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Header {
     pub version: i32,
     pub click_events: bool,
@@ -20,7 +20,7 @@ impl Default for Header {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Body {
     full_text: Option<String>,
     short_text: Option<String>,
@@ -65,14 +65,14 @@ impl Default for Body {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Align {
     Left,
     Right,
     Center,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Markup {
     Pango,
     None,

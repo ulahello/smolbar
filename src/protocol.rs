@@ -67,6 +67,7 @@ impl Default for Body {
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Align {
     Left,
     Right,
@@ -74,6 +75,7 @@ pub enum Align {
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Markup {
     Pango,
     None,

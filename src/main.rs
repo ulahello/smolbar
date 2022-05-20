@@ -90,6 +90,7 @@ pub struct Smolbar {
 impl Smolbar {
     pub fn new(header: Header) -> Result<Self, Error> {
         ser::to_writer(stdout(), &header)?;
+        write!(stdout(), "[")?;
         Ok(Self {
             header,
             blocks: Vec::new(),

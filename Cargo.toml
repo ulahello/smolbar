@@ -7,8 +7,10 @@ description = "smol status bar for sway"
 license = "GPL-3.0-or-later"
 
 [dependencies]
+crossbeam-channel = "0.5"
 rgb = "0.8"
 signal-hook = "0.3"
+toml = "0.5"
 
 [profile.release]
 lto = true

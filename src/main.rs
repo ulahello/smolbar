@@ -84,21 +84,47 @@ fn try_main() -> Result<(), Error> {
 #[derive(Debug)]
 pub struct Smolbar {
     header: Header,
-    blocks: Vec<Block>,
+    blocks: Arc<Mutex<Vec<Block>>>,
+    listen: (Sender<()>, JoinHandle<()>),
 }
 
 impl Smolbar {
     pub fn new(header: Header) -> Result<Self, Error> {
+        /* start writing json */
         ser::to_writer(stdout(), &header)?;
         write!(stdout(), "[")?;
+
+        let blocks = Arc::new(Mutex::new(Vec::new()));
+        let blocks_c = blocks.clone();
+        let (sender, receiver) = bounded(1);
+
         Ok(Self {
             header,
-            blocks: Vec::new(),
+            blocks: blocks,
+            listen: (
+                sender,
+                thread::spawn(move || loop {
+                    // wait for refresh ping
+                    receiver.recv().unwrap();
+
+                    // write each json block
+                    write!(stdout(), "[").unwrap();
+                    for block in blocks_c.lock().unwrap().iter() {
+                        ser::to_writer(stdout(), &block.read()).unwrap();
+                    }
+
+                    write!(stdout(), "],").unwrap();
+                    stdout().flush().unwrap();
+                }),
+            ),
         })
     }
 
     pub fn push(&mut self, block: TomlBlock) {
-        self.blocks.push(Block::new(block));
+        self.blocks
+            .lock()
+            .unwrap()
+            .push(Block::new(block, self.listen.0.clone()));
     }
 }
 
@@ -119,7 +145,7 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(toml: TomlBlock) -> Self {
+    pub fn new(toml: TomlBlock, bar_refresh: Sender<()>) -> Self {
         let (cmd_send, cmd_recv) = bounded(1);
         let (pulse_send, pulse_recv) = bounded(1);
         let pulse_send_cmd = cmd_send.clone();
@@ -132,12 +158,17 @@ impl Block {
                 thread::spawn(move || {
                     let mut command = Command::new(toml.command);
 
-                    // update the body until we are instructed to shut down
+                    // continue until instructed to shut down
                     while cmd_recv.recv().unwrap() {
+                        // run command and capture output for Body
                         if let Ok(output) = command.output() {
                             let mut body = body_c.lock().unwrap();
-                            dbg!(output);
+
+                            // refresh block body
                             //*body = todo!("parse command stdout and update block body");
+
+                            // ping parent bar to let know we are refreshed
+                            bar_refresh.send(()).unwrap();
                         }
                     }
                 }),

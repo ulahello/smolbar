@@ -21,13 +21,13 @@ impl Default for Header {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Body {
     full_text: Option<String>,
     short_text: Option<String>,
-    color: Option<RGBA16>,
-    background: Option<RGBA16>,
-    border: Option<RGBA16>,
+    color: Option<String>,
+    background: Option<String>,
+    border: Option<String>,
     border_top: Option<u32>,
     border_bottom: Option<u32>,
     border_left: Option<u32>,
@@ -66,14 +66,14 @@ impl Default for Body {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub enum Align {
     Left,
     Right,
     Center,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub enum Markup {
     Pango,
     None,

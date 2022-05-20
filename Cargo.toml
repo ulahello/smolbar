@@ -9,8 +9,10 @@ license = "GPL-3.0-or-later"
 [dependencies]
 crossbeam-channel = "0.5"
 rgb = "0.8"
+serde = "1.0"
+serde_derive = "1.0"
 signal-hook = "0.3"
-toml = "0.5"
+toml = { version = "0.5", features = ["preserve_order"] }
 
 [profile.release]
 lto = true

@@ -1,10 +1,12 @@
-use crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender};
-use std::io::{stdout, Error, Write};
-use std::path::PathBuf;
+use crossbeam_channel::{bounded, RecvTimeoutError, Sender};
+use serde_derive::{Deserialize, Serialize};
+use std::fs;
+use std::io::Error;
 use std::process::{self, Command};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
+use toml::Value;
 
 use smolbar::bar::Bar;
 use smolbar::protocol::{Body, Header};
@@ -19,23 +21,20 @@ fn main() {
 
 fn try_main() -> Result<(), Error> {
     /* read bar from config */
+    let config = fs::read_to_string("examples/test.toml")?;
+    let toml: Value = toml::from_str(&config)?;
     let mut bar = Smolbar {
         header: Header::default(),
         blocks: Vec::new(),
     };
 
-    bar.push(TomlBlock {
-        command: "ls".to_string(),
-        interval: Some(2),
-        signal: None,
-    });
-
-
-    bar.push(TomlBlock {
-        command: "date".to_string(),
-        interval: Some(1),
-        signal: None,
-    });
+    if let Some(items) = toml.as_table() {
+        for (name, item) in items {
+            if let Ok(block) = item.clone().try_into() {
+                bar.push(block);
+            }
+        }
+    }
 
     // NOTE: bar is expected to be active before passed to runtime
     runtime::start(Box::new(bar))?;
@@ -138,6 +137,7 @@ impl Drop for Block {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
 pub struct TomlBlock {
     command: String,
     interval: Option<u32>,

@@ -1,0 +1,7 @@
+[first]
+command = "ls"
+interval = 1
+
+[second]
+command = "date"
+interval = 3

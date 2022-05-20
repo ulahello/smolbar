@@ -85,7 +85,7 @@ fn try_main() -> Result<(), Error> {
 pub struct Smolbar {
     header: Header,
     blocks: Arc<Mutex<Vec<Block>>>,
-    listen: (Sender<()>, JoinHandle<()>),
+    listen: (Sender<bool>, JoinHandle<()>),
 }
 
 impl Smolbar {
@@ -105,16 +105,18 @@ impl Smolbar {
                 sender,
                 thread::spawn(move || loop {
                     // wait for refresh ping
-                    receiver.recv().unwrap();
+                    if receiver.recv().unwrap() {
+                        // write each json block
+                        write!(stdout(), "[").unwrap();
+                        for block in blocks_c.lock().unwrap().iter() {
+                            ser::to_writer(stdout(), &block.read()).unwrap();
+                        }
 
-                    // write each json block
-                    write!(stdout(), "[").unwrap();
-                    for block in blocks_c.lock().unwrap().iter() {
-                        ser::to_writer(stdout(), &block.read()).unwrap();
+                        write!(stdout(), "],").unwrap();
+                        stdout().flush().unwrap();
+                    } else {
+                        break;
                     }
-
-                    write!(stdout(), "],").unwrap();
-                    stdout().flush().unwrap();
                 }),
             ),
         })
@@ -137,6 +139,12 @@ impl Bar for Smolbar {
     fn cont(&mut self) {}
 }
 
+impl Drop for Smolbar {
+    fn drop(&mut self) {
+        self.listen.0.send(false).unwrap();
+    }
+}
+
 #[derive(Debug)]
 pub struct Block {
     body: Arc<Mutex<Body>>,
@@ -145,7 +153,7 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(toml: TomlBlock, bar_refresh: Sender<()>) -> Self {
+    pub fn new(toml: TomlBlock, bar_refresh: Sender<bool>) -> Self {
         let (cmd_send, cmd_recv) = bounded(1);
         let (pulse_send, pulse_recv) = bounded(1);
         let pulse_send_cmd = cmd_send.clone();
@@ -168,7 +176,7 @@ impl Block {
                             //*body = todo!("parse command stdout and update block body");
 
                             // ping parent bar to let know we are refreshed
-                            bar_refresh.send(()).unwrap();
+                            bar_refresh.send(true).unwrap();
                         }
                     }
                 }),

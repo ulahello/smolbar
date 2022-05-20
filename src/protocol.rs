@@ -1,7 +1,8 @@
 use rgb::RGBA16;
+use serde_derive::Serialize;
 use signal_hook::consts::signal::*;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct Header {
     pub version: i32,
     pub click_events: bool,

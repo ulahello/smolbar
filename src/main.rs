@@ -1,9 +1,10 @@
 use crossbeam_channel::{bounded, RecvTimeoutError, Sender};
 use dirs::config_dir;
 use serde_derive::{Deserialize, Serialize};
+use serde_json::ser;
 use std::env::{self, VarError};
 use std::fs;
-use std::io::{stderr, Error, Write};
+use std::io::{stderr, stdout, Error, Write};
 use std::process::{self, Command};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
@@ -63,13 +64,11 @@ fn try_main() -> Result<(), Error> {
     /* read bar from config */
     let config = fs::read_to_string(path)?;
     let toml: Value = toml::from_str(&config)?;
-    let mut bar = Smolbar {
-        header: Header::default(),
-        blocks: Vec::new(),
-    };
+    let mut bar = Smolbar::new(Header::default())?;
 
     if let Some(items) = toml.as_table() {
         for (name, item) in items {
+            // TODO: clone?
             if let Ok(block) = item.clone().try_into() {
                 bar.push(block);
             }
@@ -89,6 +88,14 @@ pub struct Smolbar {
 }
 
 impl Smolbar {
+    pub fn new(header: Header) -> Result<Self, Error> {
+        ser::to_writer(stdout(), &header)?;
+        Ok(Self {
+            header,
+            blocks: Vec::new(),
+        })
+    }
+
     pub fn push(&mut self, block: TomlBlock) {
         self.blocks.push(Block::new(block));
     }

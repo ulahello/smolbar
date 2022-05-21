@@ -1,4 +1,4 @@
-use crossbeam_channel::{bounded, RecvTimeoutError, Sender};
+use crossbeam_channel::{bounded, unbounded, RecvTimeoutError, Sender};
 use dirs::config_dir;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::ser;
@@ -198,7 +198,7 @@ pub struct Block {
 
 impl Block {
     pub fn new(toml: TomlBlock, cmd_dir: PathBuf, bar_refresh: Sender<bool>) -> Self {
-        let (cmd_send, cmd_recv) = bounded(1);
+        let (cmd_send, cmd_recv) = unbounded();
         let (pulse_send, pulse_recv) = bounded(1);
         let (signal_send, signal_recv) = bounded(1);
 

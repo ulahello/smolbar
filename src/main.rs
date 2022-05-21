@@ -151,9 +151,9 @@ impl Bar for Smolbar {
     }
 
     fn cont(&mut self) {
-	// reload the config file
-        if let Ok(new) = Self::new(self.config.clone(), self.header) {
-            *self = new;
+        // reload the config file
+        if let Ok(blocks) = Self::read_blocks(&self.config, self.listen.0.clone()) {
+            self.blocks = Arc::new(Mutex::new(blocks));
         }
     }
 }

@@ -237,7 +237,9 @@ impl Block {
                             if let Err(stay_alive) = pulse_recv.recv_timeout(interval) {
                                 match stay_alive {
                                     RecvTimeoutError::Timeout => pulse_send_cmd.send(true).unwrap(),
-                                    RecvTimeoutError::Disconnected => todo!("good error message"),
+                                    RecvTimeoutError::Disconnected => {
+                                        panic!("pulse shutdown channel disconnected");
+                                    }
                                 }
                             } else {
                                 // we received a signal to shut down

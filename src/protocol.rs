@@ -58,6 +58,30 @@ pub struct Body {
     pub markup: Option<Markup>,
 }
 
+impl Body {
+    pub const fn new() -> Self {
+        Self {
+            full_text: None,
+            short_text: None,
+            color: None,
+            background: None,
+            border: None,
+            border_top: None,
+            border_bottom: None,
+            border_left: None,
+            border_right: None,
+            min_width: None,
+            align: None,
+            name: None,
+            instance: None,
+            urgent: None,
+            separator: None,
+            separator_block_width: None,
+            markup: None,
+        }
+    }
+}
+
 impl Default for Body {
     fn default() -> Self {
         Self {

@@ -179,7 +179,7 @@ impl Block {
         let (cmd_send, cmd_recv) = bounded(1);
         let (pulse_send, pulse_recv) = bounded(1);
         let pulse_send_cmd = cmd_send.clone();
-        let body = Arc::new(Mutex::new(Body::default()));
+        let body = Arc::new(Mutex::new(Body::new()));
         let body_c = body.clone();
         Self {
             body,

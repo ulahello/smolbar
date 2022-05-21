@@ -63,7 +63,7 @@ fn try_main() -> Result<(), Error> {
     };
 
     /* read bar from config */
-    let bar = Smolbar::new(path, Header::default())?;
+    let bar = Smolbar::new(path, Header::default(), true)?;
 
     // NOTE: bar is expected to be active before passed to runtime
     runtime::start(Box::new(bar))?;
@@ -80,10 +80,12 @@ pub struct Smolbar {
 }
 
 impl Smolbar {
-    pub fn new(config: PathBuf, header: Header) -> Result<Self, Error> {
+    pub fn new(config: PathBuf, header: Header, send_header: bool) -> Result<Self, Error> {
         /* start writing json */
-        ser::to_writer(stdout(), &header)?;
-        write!(stdout(), "\n[")?;
+        if send_header {
+            ser::to_writer(stdout(), &header)?;
+            write!(stdout(), "\n[")?;
+        }
 
         /* read config */
         let (sender, receiver) = bounded(1);
@@ -157,8 +159,8 @@ impl Bar for Smolbar {
 
     fn cont(&mut self) {
         // reload the config file
-        if let Ok(blocks) = Self::read_blocks(&self.config, self.listen.0.clone()) {
-            self.blocks = Arc::new(Mutex::new(blocks));
+        if let Ok(new) = Self::new(self.config.clone(), self.header, false) {
+            *self = new;
         }
     }
 }

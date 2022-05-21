@@ -104,6 +104,7 @@ impl Smolbar {
                         write!(stdout(), "[").unwrap();
                         for block in blocks_c.lock().unwrap().iter() {
                             ser::to_writer(stdout(), &block.read()).unwrap();
+                            write!(stdout(), ",").unwrap();
                         }
 
                         write!(stdout(), "],").unwrap();

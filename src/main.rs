@@ -210,7 +210,7 @@ impl Block {
                 // NOTE: this thread expects the main thread to be alive
                 thread::spawn(move || {
                     let mut command = Command::new(toml.command);
-                    command.current_dir(cmd_dir);
+                    command.current_dir(cmd_dir.parent().unwrap_or(&cmd_dir));
 
                     // continue until instructed to shut down
                     while cmd_recv.recv().unwrap() {

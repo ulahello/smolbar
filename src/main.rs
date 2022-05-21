@@ -76,7 +76,7 @@ pub struct Smolbar {
     config: PathBuf,
     header: Header,
     blocks: Arc<Mutex<Vec<Block>>>,
-    listen: (Sender<bool>, JoinHandle<()>),
+    listen: (Sender<bool>, JoinHandle<Result<(), Error>>),
 }
 
 impl Smolbar {
@@ -97,27 +97,28 @@ impl Smolbar {
             blocks: blocks,
             listen: (
                 sender,
-                thread::spawn(move || loop {
-                    // wait for refresh ping
-                    if receiver.recv().unwrap() {
-                        // write each json block
-                        write!(stdout(), "[").unwrap();
+                thread::spawn(move || {
+                    Ok(loop {
+                        // wait for refresh ping
+                        if receiver.recv().unwrap() {
+                            // write each json block
+                            write!(stdout(), "[")?;
 
-                        let blocks = blocks_c.lock().unwrap();
-                        for (i, block) in blocks.iter().enumerate() {
-                            ser::to_writer_pretty(stdout(), &block.read()).unwrap();
+                            let blocks = blocks_c.lock().unwrap();
+                            for (i, block) in blocks.iter().enumerate() {
+                                ser::to_writer_pretty(stdout(), &block.read())?;
 
-			    // last block doesn't have comma after it
-                            if i != blocks.len() - 1 {
-                                writeln!(stdout(), ",").unwrap();
+                                // last block doesn't have comma after it
+                                if i != blocks.len() - 1 {
+                                    writeln!(stdout(), ",")?;
+                                }
                             }
-                        }
 
-                        writeln!(stdout(), "],").unwrap();
-                        stdout().flush().unwrap();
-                    } else {
-                        break;
-                    }
+                            writeln!(stdout(), "],")?;
+                        } else {
+                            break;
+                        }
+                    })
                 }),
             ),
         })

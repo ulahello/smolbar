@@ -205,7 +205,12 @@ impl Block {
         let pulse_send_cmd = cmd_send.clone();
         let signal_send_cmd = cmd_send.clone();
 
-        let body = Arc::new(Mutex::new(Body::new()));
+        let mut body = Arc::new(Mutex::new({
+            let mut body = Body::new();
+            body.separator = toml.separator;
+	    body
+        }));
+
         let body_c = body.clone();
 
         Self {
@@ -350,4 +355,6 @@ pub struct TomlBlock {
     command: String,
     interval: Option<u32>,
     signal: Option<i32>,
+
+    separator: Option<bool>,
 }

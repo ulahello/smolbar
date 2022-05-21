@@ -143,13 +143,15 @@ impl Smolbar {
         let toml: Value = toml::from_str(&config)?;
         let mut blocks = Vec::new();
 
-        if let Some(items) = toml.as_table() {
-            for (name, item) in items {
-                // TODO: clone?
-                if let Ok(block) = item.clone().try_into() {
-                    blocks.push(Block::new(block, bar_refresh.clone()));
+        match toml {
+            Value::Table(items) => {
+                for (name, item) in items {
+                    if let Ok(block) = item.try_into() {
+                        blocks.push(Block::new(block, bar_refresh.clone()));
+                    }
                 }
             }
+            _ => (),
         }
 
         Ok(blocks)

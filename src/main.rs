@@ -252,7 +252,10 @@ impl Block {
                                 //body.separator_block_width = lines.next().map(|s| s.to_string());
                                 //body.markup = lines.next().map(|s| s.to_string());
 
-				// TODO: move value around instead of cloning
+                                // TODO: be able to set these globally too, but with precedence:
+                                // global < local < cmd stdout
+
+                                // TODO: move value around instead of cloning
                                 if body.color.is_none() {
                                     body.color = toml.color.clone();
                                 }

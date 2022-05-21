@@ -116,6 +116,7 @@ impl Smolbar {
 
                             writeln!(stdout(), "],")?;
                         } else {
+			    // we received the shutdown signal
                             break;
                         }
                     })

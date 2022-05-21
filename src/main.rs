@@ -93,7 +93,10 @@ impl Smolbar {
 
         /* read config */
         let (sender, receiver) = bounded(1);
-        let blocks = Arc::new(Mutex::new(Self::read_blocks(&config, sender.clone())?));
+        let blocks = Arc::new(Mutex::new(Self::read_blocks(
+            config.clone(),
+            sender.clone(),
+        )?));
         let blocks_c = blocks.clone();
 
         /* initialize with listener */
@@ -131,15 +134,15 @@ impl Smolbar {
         })
     }
 
-    pub fn push(&mut self, block: TomlBlock) {
+    pub fn push(&mut self, config: PathBuf, block: TomlBlock) {
         self.blocks
             .lock()
             .unwrap()
-            .push(Block::new(block, self.listen.0.clone()));
+            .push(Block::new(block, config, self.listen.0.clone()));
     }
 
-    fn read_blocks(path: &Path, bar_refresh: Sender<bool>) -> Result<Vec<Block>, Error> {
-        let config = fs::read_to_string(path)?;
+    fn read_blocks(path: PathBuf, bar_refresh: Sender<bool>) -> Result<Vec<Block>, Error> {
+        let config = fs::read_to_string(path.clone())?;
         let toml: Value = toml::from_str(&config)?;
         let mut blocks = Vec::new();
 
@@ -147,7 +150,7 @@ impl Smolbar {
             Value::Table(items) => {
                 for (name, item) in items {
                     if let Ok(block) = item.try_into() {
-                        blocks.push(Block::new(block, bar_refresh.clone()));
+                        blocks.push(Block::new(block, path.clone(), bar_refresh.clone()));
                     }
                 }
             }
@@ -190,7 +193,7 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(toml: TomlBlock, bar_refresh: Sender<bool>) -> Self {
+    pub fn new(toml: TomlBlock, cmd_dir: PathBuf, bar_refresh: Sender<bool>) -> Self {
         let (cmd_send, cmd_recv) = bounded(1);
         let (pulse_send, pulse_recv) = bounded(1);
         let (signal_send, signal_recv) = bounded(1);
@@ -208,11 +211,11 @@ impl Block {
                 // NOTE: this thread expects the main thread to be alive
                 thread::spawn(move || {
                     let mut command = Command::new(toml.command);
+                    command.current_dir(cmd_dir);
 
                     // continue until instructed to shut down
                     while cmd_recv.recv().unwrap() {
                         // run command and capture output for Body
-                        // TODO: run output in the config path
                         // TODO: parse command string to pass args
                         if let Ok(output) = command.output() {
                             let mut body = body_c.lock().unwrap();

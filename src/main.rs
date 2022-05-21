@@ -185,6 +185,7 @@ impl Block {
         let pulse_send_cmd = cmd_send.clone();
         let body = Arc::new(Mutex::new(Body::new()));
         let body_c = body.clone();
+
         Self {
             body,
             cmd: (
@@ -229,6 +230,7 @@ impl Block {
                     }
                 }),
             ),
+
             pulse: (
                 pulse_send,
                 thread::spawn(move || {

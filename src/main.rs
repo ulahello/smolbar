@@ -102,9 +102,12 @@ impl Smolbar {
                     if receiver.recv().unwrap() {
                         // write each json block
                         write!(stdout(), "[").unwrap();
+
                         let blocks = blocks_c.lock().unwrap();
                         for (i, block) in blocks.iter().enumerate() {
                             ser::to_writer_pretty(stdout(), &block.read()).unwrap();
+
+			    // last block doesn't have comma after it
                             if i != blocks.len() - 1 {
                                 writeln!(stdout(), ",").unwrap();
                             }

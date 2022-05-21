@@ -2,6 +2,10 @@ use crossbeam_channel::{bounded, RecvTimeoutError, Sender};
 use dirs::config_dir;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::ser;
+use signal_hook::consts;
+use signal_hook::iterator::Signals;
+use toml::Value;
+
 use std::env::{self, VarError};
 use std::fs;
 use std::io::{stderr, stdout, Error, Write};
@@ -10,7 +14,6 @@ use std::process::{self, Command};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
-use toml::Value;
 
 use smolbar::bar::Bar;
 use smolbar::protocol::{Body, Header};
@@ -176,13 +179,18 @@ pub struct Block {
     body: Arc<Mutex<Body>>,
     cmd: (Sender<bool>, JoinHandle<()>),
     pulse: (Sender<()>, JoinHandle<()>),
+    signal: (Sender<()>, JoinHandle<Result<(), Error>>),
 }
 
 impl Block {
     pub fn new(toml: TomlBlock, bar_refresh: Sender<bool>) -> Self {
         let (cmd_send, cmd_recv) = bounded(1);
         let (pulse_send, pulse_recv) = bounded(1);
+        let (signal_send, signal_recv) = bounded(1);
+
         let pulse_send_cmd = cmd_send.clone();
+        let signal_send_cmd = cmd_send.clone();
+
         let body = Arc::new(Mutex::new(Body::new()));
         let body_c = body.clone();
 
@@ -234,7 +242,6 @@ impl Block {
             pulse: (
                 pulse_send,
                 thread::spawn(move || {
-                    // TODO: update on signal
                     if let Some(interval) = toml.interval {
                         let interval = Duration::from_secs(interval.into());
                         // update the body at the interval
@@ -255,6 +262,31 @@ impl Block {
                         // only update the body once
                         pulse_send_cmd.send(true).unwrap();
                     }
+                }),
+            ),
+
+            signal: (
+                signal_send,
+                thread::spawn(move || {
+                    // if signal is set, wait on it
+                    // TODO: shutdown upon signal
+                    if let Some(signal) = toml.signal {
+                        if !consts::FORBIDDEN.contains(&signal) {
+                            let mut signals = Signals::new(&[signal])?;
+
+                            for incoming in signals.forever() {
+                                let incoming = incoming as i32;
+                                if incoming == signal {
+                                    // refresh the block
+                                    signal_send_cmd.send(true).unwrap();
+                                } else {
+                                    unreachable!();
+                                }
+                            }
+                        }
+                    }
+
+                    Ok(())
                 }),
             ),
         }

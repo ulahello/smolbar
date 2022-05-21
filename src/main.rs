@@ -225,7 +225,6 @@ impl Block {
                     // continue until instructed to shut down
                     while cmd_recv.recv().unwrap() {
                         // run command and capture output for Body
-                        // TODO: parse command string to pass args
                         if let Ok(output) = command.output() {
                             let mut body = body_c.lock().unwrap();
 

@@ -205,7 +205,7 @@ impl Block {
         let pulse_send_cmd = cmd_send.clone();
         let signal_send_cmd = cmd_send.clone();
 
-        let mut body = Arc::new(Mutex::new({
+        let body = Arc::new(Mutex::new({
             let mut body = Body::new();
             body.separator = toml.separator;
             body

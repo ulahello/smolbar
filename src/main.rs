@@ -271,12 +271,18 @@ impl Block {
                     if let Some(interval) = toml.interval {
                         let interval = Duration::from_secs(interval.into());
                         // update the body at the interval
-                        while let Err(stay_alive) = pulse_recv.recv_timeout(interval) {
-                            match stay_alive {
-                                RecvTimeoutError::Timeout => pulse_send_cmd.send(true).unwrap(),
-                                RecvTimeoutError::Disconnected => {
-                                    panic!("pulse shutdown channel disconnected");
+                        loop {
+                            pulse_send_cmd.send(true).unwrap();
+                            if let Err(stay_alive) = pulse_recv.recv_timeout(interval) {
+                                match stay_alive {
+                                    RecvTimeoutError::Timeout => continue,
+                                    RecvTimeoutError::Disconnected => {
+                                        panic!("pulse shutdown channel disconnected");
+                                    }
                                 }
+                            } else {
+                                // we received shutdown signal
+                                break;
                             }
                         }
                     } else {

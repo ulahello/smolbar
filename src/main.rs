@@ -82,7 +82,7 @@ pub struct Smolbar {
 impl Smolbar {
     pub fn new(config: PathBuf, header: Header) -> Result<Self, Error> {
         /* start writing json */
-        ser::to_writer(stdout(), &header)?;
+        ser::to_writer_pretty(stdout(), &header)?;
         write!(stdout(), "\n[")?;
 
         /* read config */
@@ -102,12 +102,15 @@ impl Smolbar {
                     if receiver.recv().unwrap() {
                         // write each json block
                         write!(stdout(), "[").unwrap();
-                        for block in blocks_c.lock().unwrap().iter() {
-                            ser::to_writer(stdout(), &block.read()).unwrap();
-                            write!(stdout(), ",").unwrap();
+                        let blocks = blocks_c.lock().unwrap();
+                        for (i, block) in blocks.iter().enumerate() {
+                            ser::to_writer_pretty(stdout(), &block.read()).unwrap();
+                            if i != blocks.len() - 1 {
+                                writeln!(stdout(), ",").unwrap();
+                            }
                         }
 
-                        write!(stdout(), "],").unwrap();
+                        writeln!(stdout(), "],").unwrap();
                         stdout().flush().unwrap();
                     } else {
                         break;

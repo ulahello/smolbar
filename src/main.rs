@@ -232,7 +232,9 @@ impl Block {
                             if let Ok(utf8) = String::from_utf8(output.stdout) {
                                 let mut lines = utf8.lines();
 
-                                body.full_text = lines.next().map(|s| s.to_string());
+                                body.full_text = lines.next().map(|s| {
+                                    format!("{}{}", toml.prefix.clone().unwrap_or("".into()), s)
+                                });
                                 body.short_text = lines.next().map(|s| s.to_string());
                                 body.color = lines.next().map(|s| s.to_string());
                                 body.background = lines.next().map(|s| s.to_string());
@@ -366,6 +368,7 @@ pub struct TomlBlock {
     interval: Option<u32>,
     signal: Option<i32>,
 
+    prefix: Option<String>,
     color: Option<String>,
     separator: Option<bool>,
 }

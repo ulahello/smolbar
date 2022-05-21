@@ -1,4 +1,3 @@
-use rgb::RGBA16;
 use serde_derive::Serialize;
 use signal_hook::consts::signal::*;
 

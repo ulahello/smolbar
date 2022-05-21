@@ -10,7 +10,7 @@ use std::env::{self, VarError};
 use std::fs;
 use std::io::{stderr, stdout, Error, Write};
 use std::ops::Deref;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{self, Command};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::{self, JoinHandle};
@@ -103,11 +103,11 @@ impl Smolbar {
         Ok(Self {
             config,
             header,
-            blocks: blocks,
+            blocks,
             listen: (
                 sender,
                 thread::spawn(move || {
-                    Ok(loop {
+                    loop {
                         // wait for refresh ping
                         if receiver.recv().unwrap() {
                             // write each json block
@@ -128,7 +128,9 @@ impl Smolbar {
                             // we received the shutdown signal
                             break;
                         }
-                    })
+                    }
+
+                    Ok(())
                 }),
             ),
         })
@@ -146,15 +148,12 @@ impl Smolbar {
         let toml: Value = toml::from_str(&config)?;
         let mut blocks = Vec::new();
 
-        match toml {
-            Value::Table(items) => {
-                for (name, item) in items {
-                    if let Ok(block) = item.try_into() {
-                        blocks.push(Block::new(block, path.clone(), bar_refresh.clone()));
-                    }
+        if let Value::Table(items) = toml {
+            for (name, item) in items {
+                if let Ok(block) = item.try_into() {
+                    blocks.push(Block::new(block, path.clone(), bar_refresh.clone()));
                 }
             }
-            _ => (),
         }
 
         Ok(blocks)
@@ -257,17 +256,12 @@ impl Block {
                     if let Some(interval) = toml.interval {
                         let interval = Duration::from_secs(interval.into());
                         // update the body at the interval
-                        loop {
-                            if let Err(stay_alive) = pulse_recv.recv_timeout(interval) {
-                                match stay_alive {
-                                    RecvTimeoutError::Timeout => pulse_send_cmd.send(true).unwrap(),
-                                    RecvTimeoutError::Disconnected => {
-                                        panic!("pulse shutdown channel disconnected");
-                                    }
+                        while let Err(stay_alive) = pulse_recv.recv_timeout(interval) {
+                            match stay_alive {
+                                RecvTimeoutError::Timeout => pulse_send_cmd.send(true).unwrap(),
+                                RecvTimeoutError::Disconnected => {
+                                    panic!("pulse shutdown channel disconnected");
                                 }
-                            } else {
-                                // we received a signal to shut down
-                                break;
                             }
                         }
                     } else {

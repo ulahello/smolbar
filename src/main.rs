@@ -82,7 +82,7 @@ pub struct Smolbar {
 impl Smolbar {
     pub fn new(config: PathBuf, header: Header) -> Result<Self, Error> {
         /* start writing json */
-        ser::to_writer_pretty(stdout(), &header)?;
+        ser::to_writer(stdout(), &header)?;
         write!(stdout(), "\n[")?;
 
         /* read config */

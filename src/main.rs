@@ -208,7 +208,7 @@ impl Block {
         let mut body = Arc::new(Mutex::new({
             let mut body = Body::new();
             body.separator = toml.separator;
-	    body
+            body
         }));
 
         let body_c = body.clone();
@@ -250,6 +250,11 @@ impl Block {
                                 //body.separator = lines.next().map(|s| s.to_string());
                                 //body.separator_block_width = lines.next().map(|s| s.to_string());
                                 //body.markup = lines.next().map(|s| s.to_string());
+
+				// TODO: move value around instead of cloning
+                                if body.color.is_none() {
+                                    body.color = toml.color.clone();
+                                }
                             }
 
                             // ping parent bar to let know we are refreshed
@@ -356,5 +361,6 @@ pub struct TomlBlock {
     interval: Option<u32>,
     signal: Option<i32>,
 
+    color: Option<String>,
     separator: Option<bool>,
 }

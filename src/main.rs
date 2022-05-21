@@ -9,9 +9,10 @@ use toml::Value;
 use std::env::{self, VarError};
 use std::fs;
 use std::io::{stderr, stdout, Error, Write};
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
@@ -111,7 +112,7 @@ impl Smolbar {
 
                             let blocks = blocks_c.lock().unwrap();
                             for (i, block) in blocks.iter().enumerate() {
-                                ser::to_writer_pretty(stdout(), &block.read())?;
+                                ser::to_writer_pretty(stdout(), block.read().deref())?;
 
                                 // last block doesn't have comma after it
                                 if i != blocks.len() - 1 {
@@ -323,9 +324,8 @@ impl Block {
         }
     }
 
-    fn read(&self) -> Body {
-        // TODO: could this return a mutexguard?
-        self.body.lock().unwrap().clone()
+    fn read(&self) -> MutexGuard<Body> {
+        self.body.lock().unwrap()
     }
 
     fn stop(self) {

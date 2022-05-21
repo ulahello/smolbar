@@ -23,23 +23,39 @@ impl Default for Header {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Body {
-    full_text: Option<String>,
-    short_text: Option<String>,
-    color: Option<String>,
-    background: Option<String>,
-    border: Option<String>,
-    border_top: Option<u32>,
-    border_bottom: Option<u32>,
-    border_left: Option<u32>,
-    border_right: Option<u32>,
-    min_width: Option<String>,
-    align: Option<Align>,
-    name: Option<String>,
-    instance: Option<String>,
-    urgent: Option<bool>,
-    separator: Option<bool>,
-    separator_block_width: Option<u32>,
-    markup: Option<Markup>,
+    pub full_text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub short_text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub border: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub border_top: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub border_bottom: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub border_left: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub border_right: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_width: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub align: Option<Align>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instance: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub urgent: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub separator: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub separator_block_width: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub markup: Option<Markup>,
 }
 
 impl Default for Body {

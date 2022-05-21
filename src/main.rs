@@ -5,6 +5,7 @@ use serde_json::ser;
 use std::env::{self, VarError};
 use std::fs;
 use std::io::{stderr, stdout, Error, Write};
+use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
@@ -62,18 +63,7 @@ fn try_main() -> Result<(), Error> {
     };
 
     /* read bar from config */
-    let config = fs::read_to_string(path)?;
-    let toml: Value = toml::from_str(&config)?;
-    let mut bar = Smolbar::new(Header::default())?;
-
-    if let Some(items) = toml.as_table() {
-        for (name, item) in items {
-            // TODO: clone?
-            if let Ok(block) = item.clone().try_into() {
-                bar.push(block);
-            }
-        }
-    }
+    let bar = Smolbar::new(path, Header::default())?;
 
     // NOTE: bar is expected to be active before passed to runtime
     runtime::start(Box::new(bar))?;
@@ -83,22 +73,26 @@ fn try_main() -> Result<(), Error> {
 
 #[derive(Debug)]
 pub struct Smolbar {
+    config: PathBuf,
     header: Header,
     blocks: Arc<Mutex<Vec<Block>>>,
     listen: (Sender<bool>, JoinHandle<()>),
 }
 
 impl Smolbar {
-    pub fn new(header: Header) -> Result<Self, Error> {
+    pub fn new(config: PathBuf, header: Header) -> Result<Self, Error> {
         /* start writing json */
         ser::to_writer(stdout(), &header)?;
         write!(stdout(), "[")?;
 
-        let blocks = Arc::new(Mutex::new(Vec::new()));
-        let blocks_c = blocks.clone();
+        /* read config */
         let (sender, receiver) = bounded(1);
+        let blocks = Arc::new(Mutex::new(Self::read_blocks(&config, sender.clone())?));
+        let blocks_c = blocks.clone();
 
+        /* initialize with listener */
         Ok(Self {
+            config,
             header,
             blocks: blocks,
             listen: (
@@ -128,6 +122,23 @@ impl Smolbar {
             .unwrap()
             .push(Block::new(block, self.listen.0.clone()));
     }
+
+    fn read_blocks(path: &Path, bar_refresh: Sender<bool>) -> Result<Vec<Block>, Error> {
+        let config = fs::read_to_string(path)?;
+        let toml: Value = toml::from_str(&config)?;
+        let mut blocks = Vec::new();
+
+        if let Some(items) = toml.as_table() {
+            for (name, item) in items {
+                // TODO: clone?
+                if let Ok(block) = item.clone().try_into() {
+                    blocks.push(Block::new(block, bar_refresh.clone()));
+                }
+            }
+        }
+
+        Ok(blocks)
+    }
 }
 
 impl Bar for Smolbar {
@@ -135,8 +146,12 @@ impl Bar for Smolbar {
         self.header
     }
 
-    // TODO: does this need to do anything?
-    fn cont(&mut self) {}
+    fn cont(&mut self) {
+	// reload the config file
+        if let Ok(new) = Self::new(self.config.clone(), self.header) {
+            *self = new;
+        }
+    }
 }
 
 impl Drop for Smolbar {

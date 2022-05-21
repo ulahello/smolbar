@@ -93,10 +93,8 @@ impl Smolbar {
 
         /* read config */
         let (sender, receiver) = bounded(1);
-        let blocks = Arc::new(Mutex::new(Self::read_blocks(
-            config.clone(),
-            sender.clone(),
-        )?));
+        let blocks = Self::read_config(config.clone(), sender.clone())?;
+        let blocks = Arc::new(Mutex::new(blocks));
         let blocks_c = blocks.clone();
 
         /* initialize with listener */
@@ -136,22 +134,29 @@ impl Smolbar {
         })
     }
 
-    pub fn push(&mut self, config: PathBuf, block: TomlBlock) {
+    pub fn push(&mut self, cmd_dir: PathBuf, block: TomlBlock) {
         self.blocks
             .lock()
             .unwrap()
-            .push(Block::new(block, config, self.listen.0.clone()));
+            .push(Block::new(block, cmd_dir, self.listen.0.clone()));
     }
 
-    fn read_blocks(path: PathBuf, bar_refresh: Sender<bool>) -> Result<Vec<Block>, Error> {
+    fn read_config(path: PathBuf, bar_refresh: Sender<bool>) -> Result<Vec<Block>, Error> {
         let config = fs::read_to_string(path.clone())?;
         let toml: Value = toml::from_str(&config)?;
         let mut blocks = Vec::new();
 
+        let mut cmd_dir: PathBuf = path.parent().unwrap_or(&path).to_path_buf();
+        if let Some(val) = toml.get("command_dir") {
+            if let Value::String(dir) = val {
+                cmd_dir.push(PathBuf::from(dir));
+            }
+        }
+
         if let Value::Table(items) = toml {
             for (name, item) in items {
                 if let Ok(block) = item.try_into() {
-                    blocks.push(Block::new(block, path.clone(), bar_refresh.clone()));
+                    blocks.push(Block::new(block, cmd_dir.clone(), bar_refresh.clone()));
                 }
             }
         }
@@ -210,7 +215,7 @@ impl Block {
                 // NOTE: this thread expects the main thread to be alive
                 thread::spawn(move || {
                     let mut command = Command::new(toml.command);
-                    command.current_dir(cmd_dir.parent().unwrap_or(&cmd_dir));
+                    command.current_dir(cmd_dir);
 
                     // continue until instructed to shut down
                     while cmd_recv.recv().unwrap() {

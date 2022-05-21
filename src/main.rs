@@ -83,7 +83,7 @@ impl Smolbar {
     pub fn new(config: PathBuf, header: Header) -> Result<Self, Error> {
         /* start writing json */
         ser::to_writer(stdout(), &header)?;
-        write!(stdout(), "[")?;
+        write!(stdout(), "\n[")?;
 
         /* read config */
         let (sender, receiver) = bounded(1);

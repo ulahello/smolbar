@@ -163,6 +163,10 @@ impl Bar for Smolbar {
     fn cont(&mut self) {
         // reload the config file
         if let Ok(new) = Self::new(self.config.clone(), self.header, false) {
+            while let Some(block) = self.blocks.lock().unwrap().pop() {
+                block.stop();
+            }
+
             *self = new;
         }
     }
@@ -198,6 +202,7 @@ impl Block {
             body,
             cmd: (
                 cmd_send,
+                // NOTE: this thread expects the main thread to be alive
                 thread::spawn(move || {
                     let mut command = Command::new(toml.command);
 
@@ -241,6 +246,7 @@ impl Block {
 
             pulse: (
                 pulse_send,
+                // NOTE: this thread expects the main thread and command thread to be alive
                 thread::spawn(move || {
                     if let Some(interval) = toml.interval {
                         let interval = Duration::from_secs(interval.into());
@@ -261,29 +267,54 @@ impl Block {
                     } else {
                         // only update the body once
                         pulse_send_cmd.send(true).unwrap();
+
+                        // wait for the shutdown signal to shut down
+                        pulse_recv.recv().unwrap();
                     }
                 }),
             ),
 
             signal: (
                 signal_send,
+                // NOTE: this thread expects the main thread and command thread to be alive
                 thread::spawn(move || {
+                    // TODO: is there a way to listen for a signal on a timeout?
+                    const SHUTDOWN_CHECK: Duration = Duration::from_millis(50);
+
                     // if signal is set, wait on it
-                    // TODO: shutdown upon signal
                     if let Some(signal) = toml.signal {
                         if !consts::FORBIDDEN.contains(&signal) {
                             let mut signals = Signals::new(&[signal])?;
 
-                            for incoming in signals.forever() {
-                                let incoming = incoming as i32;
-                                if incoming == signal {
-                                    // refresh the block
-                                    signal_send_cmd.send(true).unwrap();
+                            loop {
+                                // check for shutdown signal
+                                if let Err(stay_alive) = signal_recv.recv_timeout(SHUTDOWN_CHECK) {
+                                    match stay_alive {
+                                        RecvTimeoutError::Timeout => (),
+                                        RecvTimeoutError::Disconnected => {
+                                            panic!("signal shutdown channel disconnected");
+                                        }
+                                    }
                                 } else {
-                                    unreachable!();
+                                    // we received the signal to shut down
+                                    break;
+                                }
+
+                                // only iterates when there are received signals
+                                for incoming in signals.pending() {
+                                    let incoming = incoming as i32;
+                                    if incoming == signal {
+                                        // refresh the block
+                                        signal_send_cmd.send(true).unwrap();
+                                    } else {
+                                        unreachable!();
+                                    }
                                 }
                             }
                         }
+                    } else {
+                        // otherwise, wait for the shutdown signal
+                        signal_recv.recv().unwrap();
                     }
 
                     Ok(())
@@ -297,16 +328,16 @@ impl Block {
         self.body.lock().unwrap().clone()
     }
 
-    fn stop(&mut self) {
-        // TODO: race conditions
-        self.cmd.0.send(false).unwrap();
+    fn stop(self) {
         self.pulse.0.send(()).unwrap();
-    }
-}
+        self.signal.0.send(()).unwrap();
 
-impl Drop for Block {
-    fn drop(&mut self) {
-        self.stop();
+        self.pulse.1.join().unwrap();
+        self.signal.1.join().unwrap().unwrap();
+
+        // only shut down command thread once pulse and signal are done
+        self.cmd.0.send(false).unwrap();
+        self.cmd.1.join().unwrap();
     }
 }
 

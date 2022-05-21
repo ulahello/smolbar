@@ -193,6 +193,7 @@ impl Block {
                     // continue until instructed to shut down
                     while cmd_recv.recv().unwrap() {
                         // run command and capture output for Body
+			// TODO: run output in the config path
                         if let Ok(output) = command.output() {
                             let mut body = body_c.lock().unwrap();
 
@@ -228,6 +229,7 @@ impl Block {
             pulse: (
                 pulse_send,
                 thread::spawn(move || {
+		    // TODO: update on signal
                     if let Some(interval) = toml.interval {
                         let interval = Duration::from_secs(interval.into());
                         // update the body at the interval
@@ -257,6 +259,7 @@ impl Block {
     }
 
     fn stop(&mut self) {
+	// TODO: race conditions
         self.cmd.0.send(false).unwrap();
         self.pulse.0.send(()).unwrap();
     }

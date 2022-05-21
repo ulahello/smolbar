@@ -197,7 +197,27 @@ impl Block {
                             let mut body = body_c.lock().unwrap();
 
                             // refresh block body
-                            //*body = todo!("parse command stdout and update block body");
+                            if let Ok(utf8) = String::from_utf8(output.stdout) {
+                                let mut lines = utf8.lines();
+
+                                body.full_text = lines.next().map(|s| s.to_string());
+                                body.short_text = lines.next().map(|s| s.to_string());
+                                body.color = lines.next().map(|s| s.to_string());
+                                body.background = lines.next().map(|s| s.to_string());
+                                body.border = lines.next().map(|s| s.to_string());
+                                //body.border_top = lines.next().map(|s| s.to_string());
+                                //body.border_bottom = lines.next().map(|s| s.to_string());
+                                //body.border_left = lines.next().map(|s| s.to_string());
+                                //body.border_right = lines.next().map(|s| s.to_string());
+                                body.min_width = lines.next().map(|s| s.to_string());
+                                //body.align = lines.next().map(|s| s.to_string());
+                                body.name = lines.next().map(|s| s.to_string());
+                                body.instance = lines.next().map(|s| s.to_string());
+                                //body.urgent = lines.next().map(|s| s.to_string());
+                                //body.separator = lines.next().map(|s| s.to_string());
+                                //body.separator_block_width = lines.next().map(|s| s.to_string());
+                                //body.markup = lines.next().map(|s| s.to_string());
+                            }
 
                             // ping parent bar to let know we are refreshed
                             bar_refresh.send(true).unwrap();

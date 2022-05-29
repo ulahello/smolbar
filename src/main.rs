@@ -242,7 +242,6 @@ impl Smolbar {
         self.blocks.push(Block::new(
             block,
             self.refresh_send.clone(),
-            // TODO: way to not clone path?
             self.cmd_dir.clone(),
         ));
     }

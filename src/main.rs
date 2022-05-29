@@ -97,6 +97,7 @@ async fn try_main() -> Result<(), Error> {
     let bar = Smolbar::new(path, header, cont_recv, stop_recv)?;
 
     /* start printing and updating blocks */
+    bar.init()?;
     bar.run().await?;
 
     Ok(())

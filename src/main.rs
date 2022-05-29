@@ -301,6 +301,7 @@ impl Block {
                             {
                                 let mut body = body_c.lock().unwrap();
 
+                                /* configure according to command output */
                                 body.full_text = lines.next().map(|s| {
                                     format!("{}{}", toml.prefix.clone().unwrap_or("".into()), s)
                                 });
@@ -317,12 +318,24 @@ impl Block {
                                 body.name = lines.next().map(|s| s.to_string());
                                 body.instance = lines.next().map(|s| s.to_string());
                                 //body.urgent = lines.next().map(|s| s.to_string());
-                                //body.separator = lines.next().map(|s| s.to_string());
+                                body.separator = match lines.next() {
+                                    Some(s) => match s.to_lowercase().as_ref() {
+                                        "true" => Some(true),
+                                        "false" => Some(false),
+                                        _ => None,
+                                    },
+                                    None => None,
+                                };
                                 //body.separator_block_width = lines.next().map(|s| s.to_string());
                                 //body.markup = lines.next().map(|s| s.to_string());
 
+                                /* fall back to block's toml config */
                                 if body.color.is_none() {
                                     body.color = color.clone();
+                                }
+
+                                if body.separator.is_none() {
+                                    body.separator = toml.separator;
                                 }
                             }
 

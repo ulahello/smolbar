@@ -174,7 +174,7 @@ impl Smolbar {
                 write!(stdout, "[")?;
 
                 for (i, block) in self.blocks.iter().enumerate() {
-                    writeln!(stdout, "{}", ser::to_string_pretty(&*block.read())?)?;
+                    write!(stdout, "{}", ser::to_string_pretty(&*block.read())?)?;
 
                     // last block doesn't have comma after it
                     if i != self.blocks.len() - 1 {

@@ -27,7 +27,7 @@ impl Header {
     pub const DEFAULT_STOP_SIG: i32 = SIGSTOP;
 
     /// Returns a new [`Header`] with all optional fields blank.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             version: 1,
             click_events: None,

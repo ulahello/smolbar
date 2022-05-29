@@ -119,6 +119,7 @@ pub struct Body {
 }
 
 impl Body {
+    /// Returns a new [`Body`] with all optional fields blank.
     pub const fn new() -> Self {
         Self {
             full_text: None,

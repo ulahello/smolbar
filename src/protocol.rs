@@ -167,7 +167,7 @@ impl Default for Body {
     }
 }
 
-/// [`Body`] alignment, as defined in `swaybar-protocol(7)`.
+/// [Body alignment](Body::align), as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Align {
@@ -189,7 +189,7 @@ impl FromStr for Align {
     }
 }
 
-/// [`Body`] markup, as defined in `swaybar-protocol(7)`.
+/// [Body markup](Body::markup), as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Markup {

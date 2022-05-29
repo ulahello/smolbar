@@ -319,10 +319,9 @@ impl Block {
                                 body.instance = lines.next().map(|s| s.to_string());
                                 //body.urgent = lines.next().map(|s| s.to_string());
                                 body.separator = match lines.next() {
-                                    Some(s) => match s.to_lowercase().as_ref() {
-                                        "true" => Some(true),
-                                        "false" => Some(false),
-                                        _ => None,
+                                    Some(s) => match s.parse() {
+                                        Ok(val) => Some(val),
+                                        Err(_) => None,
                                     },
                                     None => None,
                                 };

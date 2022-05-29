@@ -3,7 +3,7 @@ name = "smolbar"
 version = "0.1.0"
 authors = ["Ula Shipman <ula.hello@mailbox.org>"]
 edition = "2021"
-description = "smol status bar for sway"
+description = "smol status command for sway"
 license = "GPL-3.0-or-later"
 
 [dependencies]

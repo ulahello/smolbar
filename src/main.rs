@@ -1,35 +1,35 @@
-use crossbeam_channel::{bounded, unbounded, RecvTimeoutError, Sender};
 use dirs::config_dir;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::ser;
-use signal_hook::consts;
-use signal_hook::iterator::Signals;
+use tokio::select;
+use tokio::signal::unix::{signal, SignalKind};
+use tokio::sync::mpsc;
+use tokio::task::{self, JoinHandle};
+use tokio::time;
 use toml::Value;
 
 use std::env::{self, VarError};
 use std::fs;
 use std::io::{stderr, stdout, Error, Write};
-use std::ops::Deref;
 use std::path::PathBuf;
-use std::process::{self, Command};
+use std::process;
+use std::process::Command;
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use smolbar::bar::Bar;
 use smolbar::protocol::{Body, Header};
-use smolbar::runtime;
 
 const CONFIG_VAR: &str = "CONFIG_PATH";
 
-fn main() {
-    if let Err(err) = try_main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
+    if let Err(err) = try_main().await {
         eprintln!("fatal: {}", err);
         process::exit(1);
     }
 }
 
-fn try_main() -> Result<(), Error> {
+async fn try_main() -> Result<(), Error> {
     /* get configuration file */
     let path = match env::var(CONFIG_VAR) {
         Ok(val) => {
@@ -66,89 +66,157 @@ fn try_main() -> Result<(), Error> {
         }
     };
 
-    /* read bar from config */
-    let bar = Smolbar::new(path, Header::default(), true)?;
+    /* prepare to send continue and stop msgs to bar */
+    // NOTE: signals may be forbidden, so a channel may not always be possible (hence option)
+    let mut cont_recv = None;
+    let mut stop_recv = None;
 
-    // NOTE: bar is expected to be active before passed to runtime
-    runtime::start(Box::new(bar))?;
+    let header = Header::default();
+    for (sig, recv) in [
+        (header.cont_signal, &mut cont_recv),
+        (header.stop_signal, &mut stop_recv),
+    ] {
+        let sig = SignalKind::from_raw(sig);
+
+        if let Ok(mut stream) = signal(sig) {
+            // stream is ok, so make channel
+            let channel = mpsc::channel(1);
+            let send = channel.0;
+            *recv = Some(channel.1);
+
+            task::spawn(async move {
+                loop {
+                    stream.recv().await;
+                    send.send(()).await.unwrap();
+                }
+            });
+        }
+    }
+
+    /* read bar from config */
+    let bar = Smolbar::new(path, header, cont_recv, stop_recv)?;
+
+    /* start printing and updating blocks */
+    bar.run().await?;
 
     Ok(())
 }
 
-#[derive(Debug)]
 pub struct Smolbar {
-    config: PathBuf,
+    config_path: PathBuf,
+    cmd_dir: PathBuf,
     header: Header,
-    blocks: Arc<Mutex<Vec<Block>>>,
-    listen: (Sender<bool>, JoinHandle<Result<(), Error>>),
+    blocks: Vec<Block>,
+    cont_recv: Option<mpsc::Receiver<()>>,
+    stop_recv: Option<mpsc::Receiver<()>>,
+    refresh_recv: mpsc::Receiver<()>,
+    refresh_send: mpsc::Sender<()>,
 }
 
 impl Smolbar {
-    pub fn new(config: PathBuf, header: Header, send_header: bool) -> Result<Self, Error> {
-        /* start writing json */
-        if send_header {
-            ser::to_writer(stdout(), &header)?;
-            write!(stdout(), "\n[")?;
+    pub fn new(
+        config: PathBuf,
+        header: Header,
+        cont_recv: Option<mpsc::Receiver<()>>,
+        stop_recv: Option<mpsc::Receiver<()>>,
+    ) -> Result<Self, Error> {
+        // initialize bar without any blocks
+        let (refresh_send, refresh_recv) = mpsc::channel(1);
+        let (toml_blocks, cmd_dir) = Self::read_config(config.clone())?;
+        let mut bar = Self {
+            config_path: config,
+            cmd_dir,
+            header,
+            blocks: Vec::with_capacity(toml_blocks.len()),
+            cont_recv,
+            stop_recv,
+            refresh_recv,
+            refresh_send,
+        };
+
+        // add blocks
+        for block in toml_blocks {
+            bar.push_block(block);
         }
 
-        /* read config */
-        let (sender, receiver) = bounded(1);
-        let blocks = Self::read_config(config.clone(), sender.clone())?;
-        let blocks = Arc::new(Mutex::new(blocks));
-        let blocks_c = blocks.clone();
+        Ok(bar)
+    }
 
-        /* initialize with listener */
-        Ok(Self {
-            config,
-            header,
-            blocks,
-            listen: (
-                sender,
-                thread::spawn(move || {
-                    loop {
-                        // wait for refresh ping
-                        if receiver.recv().unwrap() {
-                            // write each json block
-                            write!(stdout(), "[")?;
+    pub fn init(&self) -> Result<(), Error> {
+        ser::to_writer(stdout(), &self.header)?;
+        write!(stdout(), "\n[")?;
 
-                            let blocks = blocks_c.lock().unwrap();
-                            for (i, block) in blocks.iter().enumerate() {
-                                ser::to_writer_pretty(stdout(), block.read().deref())?;
+        Ok(())
+    }
 
-                                // last block doesn't have comma after it
-                                if i != blocks.len() - 1 {
-                                    writeln!(stdout(), ",")?;
-                                }
-                            }
+    pub async fn run(mut self) -> Result<(), Error> {
+        /* listen for cont */
+        if let Some(mut cont_recv) = self.cont_recv {
+            task::spawn(async move {
+                loop {
+                    cont_recv.recv().await.unwrap();
+                    todo!("cont");
+                }
+            });
+        }
 
-                            writeln!(stdout(), "],")?;
-                        } else {
-                            // we received the shutdown signal
-                            break;
-                        }
+        /* listen for refresh */
+        let refresh = task::spawn(async move {
+            loop {
+                // wait for refresh signal
+                self.refresh_recv.recv().await.unwrap();
+
+                // write each json block
+                write!(stdout(), "[")?;
+
+                for (i, block) in self.blocks.iter().enumerate() {
+                    ser::to_writer_pretty(stdout(), &*block.read())?;
+
+                    // last block doesn't have comma after it
+                    if i != self.blocks.len() - 1 {
+                        writeln!(stdout(), ",")?;
                     }
+                }
 
-                    Ok(())
-                }),
-            ),
-        })
+                writeln!(stdout(), "],")?;
+            }
+
+            Ok::<(), Error>(())
+        });
+
+        /* listen for stop */
+        if let Some(mut stop_recv) = self.stop_recv {
+            // we await this because we want to return (and end program) when we
+            // recieve stop
+            task::spawn(async move {
+                loop {
+                    stop_recv.recv().await.unwrap();
+                    todo!("stop");
+                }
+            })
+            .await
+            .unwrap();
+        } else {
+            // if there is no valid stop signal to listen for, await the refresh
+            // loop (loop not expected to break)
+            refresh.await.unwrap().unwrap();
+        }
+
+        Ok(())
     }
 
-    pub fn push(&mut self, cmd_dir: PathBuf, block: TomlBlock) {
-        self.blocks
-            .lock()
-            .unwrap()
-            .push(Block::new(block, cmd_dir, self.listen.0.clone()));
-    }
-
-    fn read_config(path: PathBuf, bar_refresh: Sender<bool>) -> Result<Vec<Block>, Error> {
+    fn read_config(path: PathBuf) -> Result<(Vec<TomlBlock>, PathBuf), Error> {
         let config = fs::read_to_string(path.clone())?;
         let toml: Value = toml::from_str(&config)?;
         let mut blocks = Vec::new();
 
+        // cmd_dir is either the config's parent path or whatever is specified
+        // in toml
         let mut cmd_dir: PathBuf = path.parent().unwrap_or(&path).to_path_buf();
         if let Some(val) = toml.get("command_dir") {
             if let Value::String(dir) = val {
+                // if the toml cmd_dir is relative, its appended to the config
+                // path parent
                 cmd_dir.push(PathBuf::from(dir));
             }
         }
@@ -156,81 +224,81 @@ impl Smolbar {
         if let Value::Table(items) = toml {
             for (name, item) in items {
                 if let Ok(block) = item.try_into() {
-                    blocks.push(Block::new(block, cmd_dir.clone(), bar_refresh.clone()));
+                    blocks.push(block);
                 }
             }
         }
 
-        Ok(blocks)
+        Ok((blocks, cmd_dir))
+    }
+
+    fn push_block(&mut self, block: TomlBlock) {
+        self.blocks.push(Block::new(
+            block,
+            self.refresh_send.clone(),
+            // TODO: way to not clone path?
+            self.cmd_dir.clone(),
+        ));
     }
 }
 
-impl Bar for Smolbar {
-    fn header(&self) -> Header {
-        self.header
-    }
+#[derive(Debug, Deserialize, Serialize)]
+pub struct TomlBlock {
+    command: String,
+    interval: Option<u32>,
+    signal: Option<i32>,
 
-    fn cont(&mut self) {
-        // reload the config file
-        if let Ok(new) = Self::new(self.config.clone(), self.header, false) {
-            while let Some(block) = self.blocks.lock().unwrap().pop() {
-                block.stop();
-            }
-
-            *self = new;
-        }
-    }
+    prefix: Option<String>,
+    color: Option<String>,
+    separator: Option<bool>,
 }
 
-impl Drop for Smolbar {
-    fn drop(&mut self) {
-        self.listen.0.send(false).unwrap();
-    }
-}
-
-#[derive(Debug)]
 pub struct Block {
     body: Arc<Mutex<Body>>,
-    cmd: (Sender<bool>, JoinHandle<()>),
-    pulse: (Sender<()>, JoinHandle<()>),
-    signal: (Sender<()>, JoinHandle<Result<(), Error>>),
+
+    // `cmd` is responsible for sending refresh msgs to the bar.
+    // it continues as long as it receives `true`, then it halts.
+    cmd: (mpsc::Sender<bool>, JoinHandle<()>),
+
+    // `interval` sends a refresh to `cmd` on an interval. if it receives `()`, it
+    // halts.
+    interval: (mpsc::Sender<()>, JoinHandle<()>),
+
+    // `signal` sends a refresh to `cmd` any time it receives a certain os
+    // signal. if it receives `()`, it halts.
+    signal: (mpsc::Sender<()>, JoinHandle<()>),
 }
 
 impl Block {
-    pub fn new(toml: TomlBlock, cmd_dir: PathBuf, bar_refresh: Sender<bool>) -> Self {
-        let (cmd_send, cmd_recv) = unbounded();
-        let (pulse_send, pulse_recv) = bounded(1);
-        let (signal_send, signal_recv) = bounded(1);
+    pub fn new(toml: TomlBlock, bar_refresh: mpsc::Sender<()>, cmd_dir: PathBuf) -> Self {
+        let body = Arc::new(Mutex::new(Body::new()));
 
-        let pulse_send_cmd = cmd_send.clone();
-        let signal_send_cmd = cmd_send.clone();
+        let (sig_send, mut sig_recv) = mpsc::channel(1);
+        let (interval_send, mut interval_recv) = mpsc::channel(1);
+        let (cmd_send, mut cmd_recv) = mpsc::channel(1);
 
-        let body = Arc::new(Mutex::new({
-            let mut body = Body::new();
-            body.separator = toml.separator;
-            body
-        }));
-
+        /* listen for body refresh msgs and fulfill them */
+        let color = toml.color;
         let body_c = body.clone();
+        let cmd = (
+            cmd_send.clone(),
+            task::spawn(async move {
+                while cmd_recv.recv().await.unwrap() {
+                    let mut command = Command::new(&toml.command);
+                    // TODO: this is breaking PATH
+                    command.current_dir(&cmd_dir);
 
-        Self {
-            body,
-            cmd: (
-                cmd_send,
-                // NOTE: this thread expects the main thread to be alive
-                thread::spawn(move || {
-                    let mut command = Command::new(toml.command);
-                    command.current_dir(cmd_dir);
+                    // run command and capture output for Body
+                    if let Ok(output) = task::spawn_blocking(move || command.output())
+                        .await
+                        .unwrap()
+                    {
+                        // refresh block body
+                        if let Ok(utf8) = String::from_utf8(output.stdout) {
+                            let mut lines = utf8.lines();
 
-                    // continue until instructed to shut down
-                    while cmd_recv.recv().unwrap() {
-                        // run command and capture output for Body
-                        if let Ok(output) = command.output() {
-                            let mut body = body_c.lock().unwrap();
-
-                            // refresh block body
-                            if let Ok(utf8) = String::from_utf8(output.stdout) {
-                                let mut lines = utf8.lines();
+                            {
+                                let mut body = body_c.lock().unwrap();
 
                                 body.full_text = lines.next().map(|s| {
                                     format!("{}{}", toml.prefix.clone().unwrap_or("".into()), s)
@@ -252,126 +320,102 @@ impl Block {
                                 //body.separator_block_width = lines.next().map(|s| s.to_string());
                                 //body.markup = lines.next().map(|s| s.to_string());
 
-                                // TODO: be able to set these globally too, but with precedence:
-                                // global < local < cmd stdout
-
-                                // TODO: move value around instead of cloning
                                 if body.color.is_none() {
-                                    body.color = toml.color.clone();
+                                    body.color = color.clone();
                                 }
                             }
 
                             // ping parent bar to let know we are refreshed
-                            bar_refresh.send(true).unwrap();
+                            bar_refresh.send(()).await.unwrap();
                         }
                     }
-                }),
-            ),
+                }
+            }),
+        );
 
-            pulse: (
-                pulse_send,
-                // NOTE: this thread expects the main thread and command thread to be alive
-                thread::spawn(move || {
-                    if let Some(interval) = toml.interval {
-                        let interval = Duration::from_secs(interval.into());
-                        // update the body at the interval
-                        loop {
-                            pulse_send_cmd.send(true).unwrap();
-                            if let Err(stay_alive) = pulse_recv.recv_timeout(interval) {
-                                match stay_alive {
-                                    RecvTimeoutError::Timeout => continue,
-                                    RecvTimeoutError::Disconnected => {
-                                        panic!("pulse shutdown channel disconnected");
-                                    }
-                                }
-                            } else {
-                                // we received shutdown signal
+        /* refresh on an interval */
+        let cmd_send_c = cmd_send.clone();
+        let toml_interval = toml.interval;
+        let interval = (
+            interval_send,
+            task::spawn(async move {
+                if let Some(timeout) = toml_interval {
+                    let timeout = Duration::from_secs(timeout.into());
+
+                    loop {
+                        match time::timeout(timeout, interval_recv.recv()).await {
+                            Ok(halt) => {
+                                halt.unwrap();
+                                // we received halt msg
                                 break;
                             }
-                        }
-                    } else {
-                        // only update the body once
-                        pulse_send_cmd.send(true).unwrap();
-
-                        // wait for the shutdown signal to shut down
-                        pulse_recv.recv().unwrap();
-                    }
-                }),
-            ),
-
-            signal: (
-                signal_send,
-                // NOTE: this thread expects the main thread and command thread to be alive
-                thread::spawn(move || {
-                    // TODO: is there a way to listen for a signal on a timeout?
-                    const SHUTDOWN_CHECK: Duration = Duration::from_millis(50);
-
-                    // if signal is set, wait on it
-                    if let Some(signal) = toml.signal {
-                        if !consts::FORBIDDEN.contains(&signal) {
-                            let mut signals = Signals::new(&[signal])?;
-
-                            loop {
-                                // check for shutdown signal
-                                if let Err(stay_alive) = signal_recv.recv_timeout(SHUTDOWN_CHECK) {
-                                    match stay_alive {
-                                        RecvTimeoutError::Timeout => (),
-                                        RecvTimeoutError::Disconnected => {
-                                            panic!("signal shutdown channel disconnected");
-                                        }
-                                    }
-                                } else {
-                                    // we received the signal to shut down
-                                    break;
-                                }
-
-                                // only iterates when there are received signals
-                                for incoming in signals.pending() {
-                                    let incoming = incoming as i32;
-                                    if incoming == signal {
-                                        // refresh the block
-                                        signal_send_cmd.send(true).unwrap();
-                                    } else {
-                                        unreachable!();
-                                    }
-                                }
+                            Err(_) => {
+                                // receiving halt msg timed out, so we refresh
+                                // the body. this creates the behavior of
+                                // refreshing the body at a specific interval
+                                // until halting
+                                cmd_send_c.send(true).await.unwrap();
                             }
                         }
-                    } else {
-                        // otherwise, wait for the shutdown signal
-                        signal_recv.recv().unwrap();
                     }
+                }
+            }),
+        );
 
-                    Ok(())
-                }),
-            ),
+        /* update body on a signal */
+        let cmd_send_c = cmd_send.clone();
+        let signal = (
+            sig_send,
+            task::spawn(async move {
+                if let Some(sig) = toml.signal {
+                    let sig = SignalKind::from_raw(sig);
+                    if let Ok(mut stream) = signal(sig) {
+                        loop {
+                            select!(
+                                halt = sig_recv.recv() => {
+                                    halt.unwrap();
+                                    break;
+                                }
+                                sig = stream.recv() => {
+                                    sig.unwrap();
+                                    cmd_send_c.send(true).await.unwrap();
+                                }
+                            );
+                        }
+                    }
+                }
+            }),
+        );
+
+        /* initialize block */
+        task::spawn(async move {
+            cmd_send.send(true).await.unwrap();
+        });
+
+        Self {
+            body,
+            cmd,
+            interval,
+            signal,
         }
     }
 
-    fn read(&self) -> MutexGuard<Body> {
+    pub fn read(&self) -> MutexGuard<Body> {
         self.body.lock().unwrap()
     }
 
-    fn stop(self) {
-        self.pulse.0.send(()).unwrap();
-        self.signal.0.send(()).unwrap();
+    pub async fn stop(mut self) {
+        // halt interval and signal tasks
+        task::spawn(async move { self.interval.0.send(()).await.unwrap() });
+        task::spawn(async move { self.signal.0.send(()).await.unwrap() });
 
-        self.pulse.1.join().unwrap();
-        self.signal.1.join().unwrap().unwrap();
+        self.interval.1.await.unwrap();
+        self.signal.1.await.unwrap();
 
-        // only shut down command thread once pulse and signal are done
-        self.cmd.0.send(false).unwrap();
-        self.cmd.1.join().unwrap();
+        // halt cmd channel, after interval/signal tasks are done
+        // NOTE: if `cmd` halts while `interval` or `signal` are alive, they will
+        // fail to send a refresh to `cmd`
+        self.cmd.0.send(false).await.unwrap();
+        self.cmd.1.await.unwrap();
     }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct TomlBlock {
-    command: String,
-    interval: Option<u32>,
-    signal: Option<i32>,
-
-    prefix: Option<String>,
-    color: Option<String>,
-    separator: Option<bool>,
 }

@@ -1,5 +1,5 @@
+use libc::{SIGCONT, SIGSTOP};
 use serde_derive::Serialize;
-use signal_hook::consts::signal::*;
 
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct Header {

@@ -12,6 +12,11 @@
 
 ## configuration
 
+`smolbar` first looks for the toml configuration file path in the environment variable `SMOLBAR_CONFIG`.
+if it's not set, it falls back to `~/.config/smolbar/config.toml`.
+
+for an example of a configuration, see the [examples](./examples).
+
 there are three scopes which can be used to configure individual blocks.
 
 ### global

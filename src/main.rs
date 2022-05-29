@@ -14,6 +14,7 @@ use std::io::{stderr, stdout, Error, Write};
 use std::path::PathBuf;
 use std::process;
 use std::process::Command;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
@@ -246,12 +247,12 @@ impl Smolbar {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TomlBlock {
     command: String,
+    prefix: Option<String>,
     interval: Option<u32>,
     signal: Option<i32>,
 
-    prefix: Option<String>,
-    color: Option<String>,
-    separator: Option<bool>,
+    #[serde(flatten)]
+    body: Body,
 }
 
 pub struct Block {
@@ -279,7 +280,6 @@ impl Block {
         let (cmd_send, mut cmd_recv) = mpsc::channel(1);
 
         /* listen for body refresh msgs and fulfill them */
-        let color = toml.color;
         let body_c = body.clone();
         let cmd = (
             cmd_send.clone(),
@@ -301,40 +301,58 @@ impl Block {
                             {
                                 let mut body = body_c.lock().unwrap();
 
-                                /* configure according to command output */
-                                body.full_text = lines.next().map(|s| {
-                                    format!("{}{}", toml.prefix.clone().unwrap_or("".into()), s)
-                                });
-                                body.short_text = lines.next().map(|s| s.to_string());
-                                body.color = lines.next().map(|s| s.to_string());
-                                body.background = lines.next().map(|s| s.to_string());
-                                body.border = lines.next().map(|s| s.to_string());
-                                //body.border_top = lines.next().map(|s| s.to_string());
-                                //body.border_bottom = lines.next().map(|s| s.to_string());
-                                //body.border_left = lines.next().map(|s| s.to_string());
-                                //body.border_right = lines.next().map(|s| s.to_string());
-                                body.min_width = lines.next().map(|s| s.to_string());
-                                //body.align = lines.next().map(|s| s.to_string());
-                                body.name = lines.next().map(|s| s.to_string());
-                                body.instance = lines.next().map(|s| s.to_string());
-                                //body.urgent = lines.next().map(|s| s.to_string());
-                                body.separator = match lines.next() {
-                                    Some(s) => match s.parse() {
-                                        Ok(val) => Some(val),
-                                        Err(_) => None,
-                                    },
-                                    None => None,
-                                };
-                                //body.separator_block_width = lines.next().map(|s| s.to_string());
-                                //body.markup = lines.next().map(|s| s.to_string());
-
-                                /* fall back to block's toml config */
-                                if body.color.is_none() {
-                                    body.color = color.clone();
+                                fn update<T: Clone + FromStr>(
+                                    field: &mut Option<T>,
+                                    value: Option<&str>,
+                                    or: &Option<T>,
+                                ) {
+                                    *field = match value {
+                                        Some(val) => match val.parse() {
+                                            Ok(new) => Some(new),
+                                            Err(_) => None,
+                                        },
+                                        None => None,
+                                    }
+                                    .or_else(|| or.clone());
                                 }
 
-                                if body.separator.is_none() {
-                                    body.separator = toml.separator;
+                                update(&mut body.full_text, lines.next(), &toml.body.full_text);
+                                update(&mut body.short_text, lines.next(), &toml.body.short_text);
+                                update(&mut body.color, lines.next(), &toml.body.color);
+                                update(&mut body.background, lines.next(), &toml.body.background);
+                                update(&mut body.border, lines.next(), &toml.body.border);
+                                update(&mut body.border_top, lines.next(), &toml.body.border_top);
+                                update(
+                                    &mut body.border_bottom,
+                                    lines.next(),
+                                    &toml.body.border_bottom,
+                                );
+                                update(&mut body.border_left, lines.next(), &toml.body.border_left);
+                                update(
+                                    &mut body.border_right,
+                                    lines.next(),
+                                    &toml.body.border_right,
+                                );
+                                update(&mut body.min_width, lines.next(), &toml.body.min_width);
+                                update(&mut body.align, lines.next(), &toml.body.align);
+                                update(&mut body.name, lines.next(), &toml.body.name);
+                                update(&mut body.instance, lines.next(), &toml.body.instance);
+                                update(&mut body.urgent, lines.next(), &toml.body.urgent);
+                                update(&mut body.separator, lines.next(), &toml.body.separator);
+                                update(
+                                    &mut body.separator_block_width,
+                                    lines.next(),
+                                    &toml.body.separator_block_width,
+                                );
+                                update(&mut body.markup, lines.next(), &toml.body.markup);
+
+                                // full text is prefixed by `prefix` field in toml
+                                if let Some(ref prefix) = toml.prefix {
+                                    if let Some(full_text) = &body.full_text {
+                                        let mut prefix = prefix.to_string();
+                                        prefix.push_str(full_text);
+                                        body.full_text = Some(prefix);
+                                    }
                                 }
                             }
 

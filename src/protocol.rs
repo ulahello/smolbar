@@ -1,5 +1,6 @@
 use libc::{SIGCONT, SIGSTOP};
 use serde_derive::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct Header {
@@ -114,11 +115,36 @@ pub enum Align {
     Center,
 }
 
+impl FromStr for Align {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
+        match s.to_lowercase().as_ref() {
+            "left" => Ok(Self::Left),
+            "right" => Ok(Self::Right),
+            "center" => Ok(Self::Center),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Markup {
     Pango,
     None,
+}
+
+impl FromStr for Markup {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
+        match s.to_lowercase().as_ref() {
+            "pango" => Ok(Self::Pango),
+            "none" => Ok(Self::None),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

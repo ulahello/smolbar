@@ -439,7 +439,7 @@ impl Block {
         self.body.lock().unwrap()
     }
 
-    pub async fn stop(mut self) {
+    pub async fn stop(self) {
         // halt interval and signal tasks
         task::spawn(async move { self.interval.0.send(()).await.unwrap() });
         task::spawn(async move { self.signal.0.send(()).await.unwrap() });

@@ -21,6 +21,9 @@ use smolbar::protocol::{Body, Header};
 
 const CONFIG_VAR: &str = "SMOLBAR_CONFIG";
 
+// TODO: logging system
+// TODO: full documentation
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     if let Err(err) = try_main().await {

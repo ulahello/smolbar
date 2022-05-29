@@ -20,7 +20,7 @@ use std::time::Duration;
 
 use smolbar::protocol::{Body, Header};
 
-const CONFIG_VAR: &str = "CONFIG_PATH";
+const CONFIG_VAR: &str = "SMOLBAR_CONFIG";
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {

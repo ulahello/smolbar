@@ -10,7 +10,7 @@ use toml::Value;
 
 use std::env::{self, VarError};
 use std::fs;
-use std::io::{stderr, stdout, Error, Write};
+use std::io::{stderr, stdout, BufWriter, Error, Write};
 use std::path::PathBuf;
 use std::process;
 use std::process::Command;
@@ -164,23 +164,27 @@ impl Smolbar {
 
         /* listen for refresh */
         let refresh = task::spawn(async move {
+            let mut stdout = BufWriter::new(stdout());
+
             loop {
                 // wait for refresh signal
                 self.refresh_recv.recv().await.unwrap();
 
                 // write each json block
-                write!(stdout(), "[")?;
+                write!(stdout, "[")?;
 
                 for (i, block) in self.blocks.iter().enumerate() {
-                    ser::to_writer_pretty(stdout(), &*block.read())?;
+                    writeln!(stdout, "{}", ser::to_string_pretty(&*block.read())?)?;
 
                     // last block doesn't have comma after it
                     if i != self.blocks.len() - 1 {
-                        writeln!(stdout(), ",")?;
+                        writeln!(stdout, ",")?;
                     }
                 }
 
-                writeln!(stdout(), "],")?;
+                writeln!(stdout, "],")?;
+
+                stdout.flush()?;
             }
 
             Ok::<(), Error>(())

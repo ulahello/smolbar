@@ -1,7 +1,7 @@
 use libc::{SIGCONT, SIGSTOP};
-use serde_derive::Serialize;
+use serde_derive::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct Header {
     pub version: i32,
     pub click_events: bool,
@@ -20,7 +20,7 @@ impl Default for Header {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Body {
     pub full_text: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -105,7 +105,7 @@ impl Default for Body {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Align {
     Left,
@@ -113,14 +113,14 @@ pub enum Align {
     Center,
 }
 
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Markup {
     Pango,
     None,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ClickEvent {
     name: String,
     instance: String,

@@ -259,6 +259,7 @@ impl Smolbar {
 pub struct TomlBlock {
     command: String,
     prefix: Option<String>,
+    postfix: Option<String>,
     interval: Option<u32>,
     signal: Option<i32>,
 
@@ -357,7 +358,7 @@ impl Block {
                                 );
                                 update(&mut body.markup, lines.next(), &toml.body.markup);
 
-                                // full text is prefixed by `prefix` field in toml
+                                // full text is prefixed by `prefix`, postfixed by `postfix` field in toml
                                 if let Some(ref prefix) = toml.prefix {
                                     if let Some(full_text) = &body.full_text {
                                         let mut prefix = prefix.to_string();
@@ -365,6 +366,12 @@ impl Block {
                                         body.full_text = Some(prefix);
                                     }
                                 }
+
+                                if let Some(ref mut full_text) = body.full_text {
+                                    if let Some(postfix) = &toml.postfix {
+                                        full_text.push_str(postfix)
+                                    }
+                                };
                             }
 
                             // ping parent bar to let know we are refreshed

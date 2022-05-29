@@ -28,6 +28,7 @@ there are three scopes which can be used to configure individual blocks.
 |----------|----------------------------------------------------|
 | command  | command to execute for `immediate` configuration   |
 | prefix   | string prefixing `full_text(immediate)`            |
+| postfix  | string appended to `full_text(immediate)`          |
 | interval | repeated interval in seconds to refresh this block |
 | signal   | os signal when received to refresh this block      |
 

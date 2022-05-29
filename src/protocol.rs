@@ -22,6 +22,7 @@ impl Default for Header {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Body {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub full_text: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub short_text: Option<String>,

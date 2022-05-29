@@ -71,10 +71,16 @@ async fn try_main() -> Result<(), Error> {
     let mut cont_recv = None;
     let mut stop_recv = None;
 
-    let header = Header::default();
+    let header = Header::new();
     for (sig, recv) in [
-        (header.cont_signal, &mut cont_recv),
-        (header.stop_signal, &mut stop_recv),
+        (
+            header.cont_signal.unwrap_or(Header::DEFAULT_CONT_SIG),
+            &mut cont_recv,
+        ),
+        (
+            header.stop_signal.unwrap_or(Header::DEFAULT_STOP_SIG),
+            &mut stop_recv,
+        ),
     ] {
         let sig = SignalKind::from_raw(sig);
 

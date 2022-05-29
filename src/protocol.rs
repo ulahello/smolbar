@@ -10,20 +10,40 @@ pub struct Header {
     /// "The protocol version to use. Currently, this must be 1"
     pub version: i32,
     /// "Whether to receive click event information to standard input"
-    pub click_events: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub click_events: Option<bool>,
     /// "The signal that swaybar should send to continue processing"
-    pub cont_signal: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cont_signal: Option<i32>,
     /// "The signal that swaybar should send to stop processing"
-    pub stop_signal: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop_signal: Option<i32>,
+}
+
+impl Header {
+    /// Default value of [`Header::cont_signal`].
+    pub const DEFAULT_CONT_SIG: i32 = SIGCONT;
+    /// Default value of [`Header::stop_signal`].
+    pub const DEFAULT_STOP_SIG: i32 = SIGSTOP;
+
+    /// Returns a new [`Header`] with all optional fields blank.
+    pub fn new() -> Self {
+        Self {
+            version: 1,
+            click_events: None,
+            cont_signal: None,
+            stop_signal: None,
+        }
+    }
 }
 
 impl Default for Header {
     fn default() -> Self {
         Self {
             version: 1,
-            click_events: false,
-            cont_signal: SIGCONT,
-            stop_signal: SIGSTOP,
+            click_events: Some(false),
+            cont_signal: Some(Self::DEFAULT_CONT_SIG),
+            stop_signal: Some(Self::DEFAULT_STOP_SIG),
         }
     }
 }
@@ -192,9 +212,9 @@ impl FromStr for Markup {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ClickEvent {
     /// "The name of the block, if set"
-    pub name: String,
+    pub name: Option<String>,
     /// "The instance of the block, if set"
-    pub instance: String,
+    pub instance: Option<String>,
     /// "The x location that the click occurred at"
     pub x: i32,
     /// "The y location that the click occurred at"

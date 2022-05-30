@@ -70,20 +70,24 @@ async fn try_main(args: Args) -> Result<(), Error> {
     // TODO: be able to confiure header
     let header = Header::new();
 
-    for (sig, recv) in [
+    for (sig, recv, name) in [
         (
             header.cont_signal.unwrap_or(Header::DEFAULT_CONT_SIG),
             &mut cont_recv,
+            "cont",
         ),
         (
             header.stop_signal.unwrap_or(Header::DEFAULT_STOP_SIG),
             &mut stop_recv,
+            "stop",
         ),
     ] {
         let sig = SignalKind::from_raw(sig);
 
         if let Ok(mut stream) = signal(sig) {
             // stream is ok, so make channel
+            trace!("{} signal {} is valid, listening", name, sig.as_raw_value());
+
             let channel = mpsc::channel(1);
             let send = channel.0;
             *recv = Some(channel.1);
@@ -95,6 +99,8 @@ async fn try_main(args: Args) -> Result<(), Error> {
                     send.send(true).await.unwrap();
                 }
             });
+        } else {
+            trace!("{} signal {} is invalid", name, sig.as_raw_value());
         }
     }
 
@@ -160,6 +166,8 @@ impl Smolbar {
         ser::to_writer(stdout(), &self.header)?;
         write!(stdout(), "\n[")?;
 
+        trace!("sent header: {:?}", self.header);
+
         Ok(())
     }
 
@@ -171,11 +179,15 @@ impl Smolbar {
             task::spawn(async move {
                 while cont_recv.recv().await.unwrap() {
                     /* reload configuration */
+                    trace!("bar received cont");
+
                     // stop all blocks
                     let mut blocks = blocks_c.lock().unwrap().take().unwrap();
                     for block in blocks.drain(..) {
                         block.stop().await;
                     }
+
+                    trace!("stopped all blocks");
 
                     // read configuration
                     let (toml_blocks, cmd_dir) = Self::read_config(self.config_path.clone())?;
@@ -228,6 +240,8 @@ impl Smolbar {
                     writeln!(stdout, "],")?;
 
                     stdout.flush()?;
+
+                    trace!("bar sent {} block(s)", blocks.len());
                 }
             }
 
@@ -242,12 +256,16 @@ impl Smolbar {
                 stop_recv.recv().await.unwrap();
 
                 /* we received stop signal */
+                trace!("bar received stop");
+
                 // stop each block. we do this first because blocks expect
                 // self.refresh_recv to be alive.
                 let blocks = self.blocks.lock().unwrap().take().unwrap();
                 for block in blocks {
                     block.stop().await;
                 }
+
+                trace!("stopped all blocks");
 
                 // tell `refresh` to halt, now that all blocks are dropped
                 self.refresh_send.send(false).await.unwrap();
@@ -287,6 +305,8 @@ impl Smolbar {
             }
         }
 
+        trace!("read {} block(s) from {}", blocks.len(), path.display());
+
         Ok((blocks, cmd_dir))
     }
 
@@ -298,9 +318,11 @@ impl Smolbar {
         block: TomlBlock,
     ) -> Option<()> {
         if let Some(vec) = &mut *blocks.lock().unwrap() {
+            trace!("pushed block with command `{}`", block.command);
             vec.push(Block::new(block, refresh_send, cmd_dir));
             Some(())
         } else {
+            trace!("unable to push block with command `{}`", block.command);
             None
         }
     }

@@ -7,7 +7,7 @@
 ## milestones
 
 - [X] refresh configurable blocks on signals/intervals
-- [ ] respond to stop and continue signals
+- [X] respond to stop and continue signals
 - [ ] support click events
 
 ## configuration

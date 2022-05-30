@@ -74,7 +74,9 @@ async fn try_main() -> Result<(), Error> {
     let mut cont_recv = None;
     let mut stop_recv = None;
 
+    // TODO: be able to confiure header
     let header = Header::new();
+
     for (sig, recv) in [
         (
             header.cont_signal.unwrap_or(Header::DEFAULT_CONT_SIG),
@@ -265,6 +267,7 @@ impl Smolbar {
         Ok(())
     }
 
+    // TODO: more generalized configuration
     fn read_config(path: PathBuf) -> Result<(Vec<TomlBlock>, PathBuf), Error> {
         let config = fs::read_to_string(path.clone())?;
         let toml: Value = toml::from_str(&config)?;

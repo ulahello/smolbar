@@ -28,8 +28,10 @@ use smolbar::Error;
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
 struct Args {
-    // TODO: document fallback
-    /// Path of the configuration file
+    /// Path to the configuration file
+    ///
+    /// If this isn't specified, it falls back to "smolbar/config.toml" in your
+    /// config directory.
     #[clap(short, long)]
     config: Option<PathBuf>,
 }

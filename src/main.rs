@@ -1,5 +1,6 @@
 use clap::Parser;
 use dirs::config_dir;
+use log::{debug, error, info, trace, warn, LevelFilter};
 use serde_derive::{Deserialize, Serialize};
 use serde_json::ser;
 use tokio::select;
@@ -17,6 +18,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
+use smolbar::logger;
 use smolbar::protocol::{Body, Header};
 use smolbar::Error;
 
@@ -27,6 +29,7 @@ use smolbar::Error;
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
 struct Args {
+    // TODO: document fallback
     /// Path of the configuration file
     #[clap(short, long)]
     config: Option<PathBuf>,
@@ -34,6 +37,8 @@ struct Args {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
+    logger::init(LevelFilter::Trace).unwrap();
+
     if let Err(err) = try_main(Args::parse()).await {
         eprintln!("fatal: {}", err);
         process::exit(1);
@@ -54,6 +59,8 @@ async fn try_main(args: Args) -> Result<(), Error> {
             }
         }
     };
+
+    info!("set config path to {}", path.display());
 
     /* prepare to send continue and stop msgs to bar */
     // NOTE: signals may be forbidden, so a channel may not always be possible (hence option)
@@ -84,6 +91,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
             task::spawn(async move {
                 loop {
                     stream.recv().await;
+                    // TODO: tell them to stop eventually
                     send.send(true).await.unwrap();
                 }
             });
@@ -256,7 +264,7 @@ impl Smolbar {
         Ok(())
     }
 
-    // TODO: more generalized configuration
+    // TODO: more generalized configuration (also flatten body global)
     fn read_config(path: PathBuf) -> Result<(Vec<TomlBlock>, PathBuf), Error> {
         let config = fs::read_to_string(path.clone())?;
         let toml: Value = toml::from_str(&config)?;

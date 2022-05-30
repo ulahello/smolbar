@@ -301,6 +301,7 @@ dependencies = [
  "clap",
  "dirs",
  "libc",
+ "log",
  "serde",
  "serde_derive",
  "serde_json",

@@ -5,7 +5,7 @@ use serde_derive::{Deserialize, Serialize};
 use serde_json::ser;
 use tokio::select;
 use tokio::signal::unix::{signal, SignalKind};
-use tokio::sync::mpsc;
+use tokio::sync::{broadcast, mpsc};
 use tokio::task::{self, JoinHandle};
 use tokio::time;
 use toml::Value;
@@ -71,6 +71,8 @@ async fn try_main(args: Args) -> Result<(), Error> {
     // TODO: be able to confiure header
     let header = Header::new();
 
+    let (sig_halt_send, _) = broadcast::channel(1);
+
     for (sig, recv, name) in [
         (
             header.cont_signal.unwrap_or(Header::DEFAULT_CONT_SIG),
@@ -89,15 +91,30 @@ async fn try_main(args: Args) -> Result<(), Error> {
             // stream is ok, so make channel
             trace!("{} signal {} is valid, listening", name, sig.as_raw_value());
 
+            let mut halt_recv = sig_halt_send.subscribe();
+
             let channel = mpsc::channel(1);
             let send = channel.0;
             *recv = Some(channel.1);
 
             task::spawn(async move {
                 loop {
-                    stream.recv().await;
-                    // TODO: tell them to stop eventually
-                    send.send(true).await.unwrap();
+                    select!(
+                        stream = stream.recv() => {
+                            stream.unwrap();
+                            send.send(true).await.unwrap();
+                        }
+
+                        halt = halt_recv.recv() => {
+                            halt.unwrap();
+                            // halt the receiving end
+                            send.send(false).await.unwrap();
+
+                            // halt
+                            trace!("{} signal listener shutting down", name);
+                            break;
+                        }
+                    );
                 }
             });
         } else {
@@ -106,7 +123,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
     }
 
     /* read bar from config */
-    let bar = Smolbar::new(path, header, cont_recv, stop_recv)?;
+    let bar = Smolbar::new(path, header, cont_recv, stop_recv, sig_halt_send)?;
 
     /* start printing and updating blocks */
     bar.init()?;
@@ -122,8 +139,12 @@ pub struct Smolbar {
     cmd_dir: PathBuf,
     header: Header,
     blocks: Arc<Mutex<Option<Vec<Block>>>>,
+
+    // sender is somewhere outside this struct. to safely drop the bar, we tell
+    // that sender to halt through cont_stop_send_halt.
     cont_recv: Option<mpsc::Receiver<bool>>,
     stop_recv: Option<mpsc::Receiver<bool>>,
+    cont_stop_send_halt: broadcast::Sender<()>,
 
     // the receiver is kept alive as long as it receives true.
     refresh_recv: mpsc::Receiver<bool>,
@@ -136,6 +157,7 @@ impl Smolbar {
         header: Header,
         cont_recv: Option<mpsc::Receiver<bool>>,
         stop_recv: Option<mpsc::Receiver<bool>>,
+        cont_stop_send_halt: broadcast::Sender<()>,
     ) -> Result<Self, Error> {
         // initialize bar without any blocks
         let (refresh_send, refresh_recv) = mpsc::channel(1);
@@ -147,6 +169,7 @@ impl Smolbar {
             blocks: Arc::new(Mutex::new(Some(Vec::with_capacity(toml_blocks.len())))),
             cont_recv,
             stop_recv,
+            cont_stop_send_halt,
             refresh_recv,
             refresh_send,
         };
@@ -178,8 +201,9 @@ impl Smolbar {
         /* listen for cont */
         let blocks_c = self.blocks.clone();
         let refresh_send_c = self.refresh_send.clone();
+        let mut cont = None;
         if let Some(mut cont_recv) = self.cont_recv {
-            task::spawn(async move {
+            cont = Some(task::spawn(async move {
                 while cont_recv.recv().await.unwrap() {
                     /* reload configuration */
                     trace!("bar received cont");
@@ -218,7 +242,7 @@ impl Smolbar {
                 }
 
                 Ok::<(), Error>(())
-            });
+            }));
         }
 
         /* listen for refresh */
@@ -274,6 +298,14 @@ impl Smolbar {
                 // tell `refresh` to halt, now that all blocks are dropped
                 self.refresh_send.send(false).await.unwrap();
                 refresh.await.unwrap().unwrap();
+
+                // tell the senders attached to cont/stop recv to halt
+                self.cont_stop_send_halt.send(()).unwrap();
+
+                // wait for cont to stop before returning and dropping the bar
+                if let Some(task) = cont {
+                    task.await.unwrap().unwrap();
+                }
             })
             .await
             .unwrap();

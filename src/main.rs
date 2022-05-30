@@ -178,8 +178,8 @@ impl Smolbar {
                 while cont_recv.recv().await.unwrap() {
                     /* reload configuration */
                     // stop all blocks
-                    let blocks = blocks_c.lock().unwrap().take().unwrap();
-                    for block in blocks {
+                    let mut blocks = blocks_c.lock().unwrap().take().unwrap();
+                    for block in blocks.drain(..) {
                         block.stop().await;
                     }
 
@@ -187,8 +187,8 @@ impl Smolbar {
                     let (toml_blocks, cmd_dir) = Self::read_config(self.config_path.clone())?;
                     self.cmd_dir = cmd_dir;
 
-                    // initialize empty block vector
-                    *blocks_c.lock().unwrap() = Some(Vec::with_capacity(toml_blocks.len()));
+                    // reuse now-empty block vector
+                    *blocks_c.lock().unwrap() = Some(blocks);
 
                     // add new blocks
                     for block in toml_blocks {
@@ -199,6 +199,11 @@ impl Smolbar {
                             block,
                         )
                         .unwrap();
+                    }
+
+                    // dont hang on to unused capacity
+                    if let Some(ref mut blocks) = *blocks_c.lock().unwrap() {
+                        blocks.shrink_to_fit();
                     }
                 }
 

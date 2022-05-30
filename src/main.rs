@@ -1,3 +1,4 @@
+use clap::Parser;
 use dirs::config_dir;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::ser;
@@ -8,9 +9,8 @@ use tokio::task::{self, JoinHandle};
 use tokio::time;
 use toml::Value;
 
-use std::env::{self, VarError};
 use std::fs;
-use std::io::{stderr, stdout, BufWriter, Error, Write};
+use std::io::{stdout, BufWriter, Write};
 use std::path::PathBuf;
 use std::process::{self, Command};
 use std::str::FromStr;
@@ -18,53 +18,39 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
 use smolbar::protocol::{Body, Header};
-
-const CONFIG_VAR: &str = "SMOLBAR_CONFIG";
+use smolbar::Error;
 
 // TODO: logging system
 // TODO: full documentation
+// TODO: when reloading config to no blocks, blocks stay visible (must send empty for each block)
+
+#[derive(Parser, Debug)]
+#[clap(author, version, about)]
+struct Args {
+    /// Path of the configuration file
+    #[clap(short, long)]
+    config: Option<PathBuf>,
+}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    if let Err(err) = try_main().await {
+    if let Err(err) = try_main(Args::parse()).await {
         eprintln!("fatal: {}", err);
         process::exit(1);
     }
 }
 
-async fn try_main() -> Result<(), Error> {
+async fn try_main(args: Args) -> Result<(), Error> {
     /* get configuration file */
-    let path = match env::var(CONFIG_VAR) {
-        Ok(val) => {
-            writeln!(stderr(), "info: set config path to \"{}\"", val)?;
-            val.into()
-        }
-        Err(err) => {
-            let env_status = match err {
-                VarError::NotPresent => "defined",
-                VarError::NotUnicode(_) => "unicode",
-            };
-
+    let path = match args.config {
+        Some(path) => path,
+        None => {
             if let Some(mut fallback) = config_dir() {
                 fallback.push("smolbar");
                 fallback.push("config.toml");
-
-                writeln!(
-                    stderr(),
-                    "info: environment variable {} not {}, fallback to \"{}\"",
-                    CONFIG_VAR,
-                    env_status,
-                    fallback.display()
-                )?;
-
                 fallback
             } else {
-                return writeln!(
-                    stderr(),
-                    "info: environment variable {} not {}, fallback not available",
-                    CONFIG_VAR,
-                    env_status
-                );
+                return Err(Error::NoConfig);
             }
         }
     };

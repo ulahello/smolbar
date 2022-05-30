@@ -22,7 +22,6 @@ use smolbar::logger;
 use smolbar::protocol::{Body, Header};
 use smolbar::Error;
 
-// TODO: logging system
 // TODO: full documentation
 // TODO: when reloading config to no blocks, blocks stay visible (must send empty for each block)
 

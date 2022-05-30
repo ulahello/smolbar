@@ -135,7 +135,7 @@ impl Smolbar {
         // initialize bar without any blocks
         let (refresh_send, refresh_recv) = mpsc::channel(1);
         let (toml_blocks, cmd_dir) = Self::read_config(config.clone())?;
-        let mut bar = Self {
+        let bar = Self {
             config_path: config,
             cmd_dir,
             header,
@@ -148,7 +148,13 @@ impl Smolbar {
 
         // add blocks
         for block in toml_blocks {
-            bar.push_block(block);
+            Self::push_block(
+                bar.blocks.clone(),
+                bar.refresh_send.clone(),
+                bar.cmd_dir.clone(),
+                block,
+            )
+            .unwrap();
         }
 
         Ok(bar)
@@ -163,12 +169,40 @@ impl Smolbar {
 
     pub async fn run(mut self) -> Result<(), Error> {
         /* listen for cont */
+        let blocks_c = self.blocks.clone();
+        let refresh_send_c = self.refresh_send.clone();
         if let Some(mut cont_recv) = self.cont_recv {
             task::spawn(async move {
                 loop {
                     cont_recv.recv().await.unwrap();
-                    todo!("cont");
+
+                    /* reload configuration */
+                    // stop all blocks
+                    let blocks = blocks_c.lock().unwrap().take().unwrap();
+                    for block in blocks {
+                        block.stop().await;
+                    }
+
+                    // read configuration
+                    let (toml_blocks, cmd_dir) = Self::read_config(self.config_path.clone())?;
+                    self.cmd_dir = cmd_dir;
+
+                    // initialize empty block vector
+                    *blocks_c.lock().unwrap() = Some(Vec::with_capacity(toml_blocks.len()));
+
+                    // add new blocks
+                    for block in toml_blocks {
+                        Self::push_block(
+                            blocks_c.clone(),
+                            refresh_send_c.clone(),
+                            self.cmd_dir.clone(),
+                            block,
+                        )
+                        .unwrap();
+                    }
                 }
+
+                Ok::<(), Error>(())
             });
         }
 
@@ -258,13 +292,15 @@ impl Smolbar {
         Ok((blocks, cmd_dir))
     }
 
-    fn push_block(&mut self, block: TomlBlock) -> Option<()> {
-        if let Some(vec) = &mut *self.blocks.lock().unwrap() {
-            vec.push(Block::new(
-                block,
-                self.refresh_send.clone(),
-                self.cmd_dir.clone(),
-            ));
+    #[must_use]
+    fn push_block(
+        blocks: Arc<Mutex<Option<Vec<Block>>>>,
+        refresh_send: mpsc::Sender<bool>,
+        cmd_dir: PathBuf,
+        block: TomlBlock,
+    ) -> Option<()> {
+        if let Some(vec) = &mut *blocks.lock().unwrap() {
+            vec.push(Block::new(block, refresh_send.clone(), cmd_dir.clone()));
             Some(())
         } else {
             None

@@ -96,7 +96,7 @@ async fn try_main() -> Result<(), Error> {
             task::spawn(async move {
                 loop {
                     stream.recv().await;
-                    send.send(()).await.unwrap();
+                    send.send(true).await.unwrap();
                 }
             });
         }
@@ -116,19 +116,21 @@ pub struct Smolbar {
     config_path: PathBuf,
     cmd_dir: PathBuf,
     header: Header,
-    blocks: Vec<Block>,
-    cont_recv: Option<mpsc::Receiver<()>>,
-    stop_recv: Option<mpsc::Receiver<()>>,
-    refresh_recv: mpsc::Receiver<()>,
-    refresh_send: mpsc::Sender<()>,
+    blocks: Arc<Mutex<Option<Vec<Block>>>>,
+    cont_recv: Option<mpsc::Receiver<bool>>,
+    stop_recv: Option<mpsc::Receiver<bool>>,
+
+    // the receiver is kept alive as long as it receives true.
+    refresh_recv: mpsc::Receiver<bool>,
+    refresh_send: mpsc::Sender<bool>,
 }
 
 impl Smolbar {
     pub fn new(
         config: PathBuf,
         header: Header,
-        cont_recv: Option<mpsc::Receiver<()>>,
-        stop_recv: Option<mpsc::Receiver<()>>,
+        cont_recv: Option<mpsc::Receiver<bool>>,
+        stop_recv: Option<mpsc::Receiver<bool>>,
     ) -> Result<Self, Error> {
         // initialize bar without any blocks
         let (refresh_send, refresh_recv) = mpsc::channel(1);
@@ -137,7 +139,7 @@ impl Smolbar {
             config_path: config,
             cmd_dir,
             header,
-            blocks: Vec::with_capacity(toml_blocks.len()),
+            blocks: Arc::new(Mutex::new(Some(Vec::with_capacity(toml_blocks.len())))),
             cont_recv,
             stop_recv,
             refresh_recv,
@@ -171,28 +173,29 @@ impl Smolbar {
         }
 
         /* listen for refresh */
+        let blocks_c = self.blocks.clone();
         let refresh = task::spawn(async move {
             let mut stdout = BufWriter::new(stdout());
 
-            loop {
-                // wait for refresh signal
-                self.refresh_recv.recv().await.unwrap();
+            // continue as long as receive true
+            while self.refresh_recv.recv().await.unwrap() {
+                if let Some(blocks) = &*blocks_c.lock().unwrap() {
+                    // write each json block
+                    write!(stdout, "[")?;
 
-                // write each json block
-                write!(stdout, "[")?;
+                    for (i, block) in blocks.iter().enumerate() {
+                        write!(stdout, "{}", ser::to_string_pretty(&*block.read())?)?;
 
-                for (i, block) in self.blocks.iter().enumerate() {
-                    write!(stdout, "{}", ser::to_string_pretty(&*block.read())?)?;
-
-                    // last block doesn't have comma after it
-                    if i != self.blocks.len() - 1 {
-                        writeln!(stdout, ",")?;
+                        // last block doesn't have comma after it
+                        if i != blocks.len() - 1 {
+                            writeln!(stdout, ",")?;
+                        }
                     }
+
+                    writeln!(stdout, "],")?;
+
+                    stdout.flush()?;
                 }
-
-                writeln!(stdout, "],")?;
-
-                stdout.flush()?;
             }
 
             Ok::<(), Error>(())
@@ -203,10 +206,19 @@ impl Smolbar {
             // we await this because we want to return (and end program) when we
             // recieve stop
             task::spawn(async move {
-                loop {
-                    stop_recv.recv().await.unwrap();
-                    todo!("stop");
+                stop_recv.recv().await.unwrap();
+
+                /* we received stop signal */
+                // stop each block. we do this first because blocks expect
+                // self.refresh_recv to be alive.
+                let blocks = self.blocks.lock().unwrap().take().unwrap();
+                for block in blocks {
+                    block.stop().await;
                 }
+
+                // tell `refresh` to halt, now that all blocks are dropped
+                self.refresh_send.send(false).await.unwrap();
+                refresh.await.unwrap().unwrap();
             })
             .await
             .unwrap();
@@ -246,12 +258,17 @@ impl Smolbar {
         Ok((blocks, cmd_dir))
     }
 
-    fn push_block(&mut self, block: TomlBlock) {
-        self.blocks.push(Block::new(
-            block,
-            self.refresh_send.clone(),
-            self.cmd_dir.clone(),
-        ));
+    fn push_block(&mut self, block: TomlBlock) -> Option<()> {
+        if let Some(vec) = &mut *self.blocks.lock().unwrap() {
+            vec.push(Block::new(
+                block,
+                self.refresh_send.clone(),
+                self.cmd_dir.clone(),
+            ));
+            Some(())
+        } else {
+            None
+        }
     }
 }
 
@@ -267,11 +284,13 @@ pub struct TomlBlock {
     body: Body,
 }
 
+#[derive(Debug)]
 pub struct Block {
     body: Arc<Mutex<Body>>,
 
-    // `cmd` is responsible for sending refresh msgs to the bar.
-    // it continues as long as it receives `true`, then it halts.
+    // `cmd` is responsible for sending refresh msgs to the bar. it continues as
+    // long as it receives `true`, then it halts. `cmd` expects `bar_refresh` to
+    // be alive.
     cmd: (mpsc::Sender<bool>, JoinHandle<()>),
 
     // `interval` sends a refresh to `cmd` on an interval. if it receives `()`, it
@@ -284,7 +303,7 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(toml: TomlBlock, bar_refresh: mpsc::Sender<()>, cmd_dir: PathBuf) -> Self {
+    pub fn new(toml: TomlBlock, bar_refresh: mpsc::Sender<bool>, cmd_dir: PathBuf) -> Self {
         let body = Arc::new(Mutex::new(Body::new()));
 
         let (sig_send, mut sig_recv) = mpsc::channel(1);
@@ -375,7 +394,7 @@ impl Block {
                             }
 
                             // ping parent bar to let know we are refreshed
-                            bar_refresh.send(()).await.unwrap();
+                            bar_refresh.send(true).await.unwrap();
                         }
                     }
                 }
@@ -407,11 +426,14 @@ impl Block {
                             }
                         }
                     }
+                } else {
+                    // wait for halt msg
+                    interval_recv.recv().await.unwrap();
                 }
             }),
         );
 
-        /* update body on a signal */
+        /* refresh on a signal */
         let cmd_send_c = cmd_send.clone();
         let signal = (
             sig_send,
@@ -432,6 +454,9 @@ impl Block {
                             );
                         }
                     }
+                } else {
+                    // wait for halt msg
+                    sig_recv.recv().await.unwrap();
                 }
             }),
         );

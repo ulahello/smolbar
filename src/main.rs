@@ -363,11 +363,7 @@ impl Block {
                     select!(
                         // we may receive halt while the command is running
                         // (which could take arbitrary time)
-                        halt = cmd_recv.recv() => {
-                            if !halt.unwrap() {
-                                break;
-                            }
-                        }
+                        Some(false) = cmd_recv.recv() => break,
 
                         Ok(output) = task::spawn_blocking(move || command.output()) => {
                             // refresh block body

@@ -175,9 +175,7 @@ impl Smolbar {
         let refresh_send_c = self.refresh_send.clone();
         if let Some(mut cont_recv) = self.cont_recv {
             task::spawn(async move {
-                loop {
-                    cont_recv.recv().await.unwrap();
-
+                while cont_recv.recv().await.unwrap() {
                     /* reload configuration */
                     // stop all blocks
                     let blocks = blocks_c.lock().unwrap().take().unwrap();
@@ -276,12 +274,10 @@ impl Smolbar {
         // cmd_dir is either the config's parent path or whatever is specified
         // in toml
         let mut cmd_dir: PathBuf = path.parent().unwrap_or(&path).to_path_buf();
-        if let Some(val) = toml.get("command_dir") {
-            if let Value::String(dir) = val {
-                // if the toml cmd_dir is relative, its appended to the config
-                // path parent
-                cmd_dir.push(PathBuf::from(dir));
-            }
+        if let Some(Value::String(dir)) = toml.get("command_dir") {
+            // if the toml cmd_dir is relative, its appended to the config
+            // path parent
+            cmd_dir.push(PathBuf::from(dir));
         }
 
         if let Value::Table(items) = toml {
@@ -303,7 +299,7 @@ impl Smolbar {
         block: TomlBlock,
     ) -> Option<()> {
         if let Some(vec) = &mut *blocks.lock().unwrap() {
-            vec.push(Block::new(block, refresh_send.clone(), cmd_dir.clone()));
+            vec.push(Block::new(block, refresh_send, cmd_dir));
             Some(())
         } else {
             None

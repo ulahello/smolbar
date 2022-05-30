@@ -112,6 +112,8 @@ async fn try_main(args: Args) -> Result<(), Error> {
     bar.init()?;
     bar.run().await?;
 
+    info!("shutting down");
+
     Ok(())
 }
 
@@ -181,6 +183,7 @@ impl Smolbar {
                 while cont_recv.recv().await.unwrap() {
                     /* reload configuration */
                     trace!("bar received cont");
+                    info!("reloading config");
 
                     // stop all blocks
                     let mut blocks = blocks_c.lock().unwrap().take().unwrap();

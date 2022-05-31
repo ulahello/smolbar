@@ -1,5 +1,8 @@
 command_dir = "blocks"
 
+[header]
+stop_signal = 2
+
 [[block]]
 command = "./memory_mem.sh"
 prefix = "Mem "

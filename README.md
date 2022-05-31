@@ -10,11 +10,18 @@
 - [X] respond to stop and continue signals
 - [ ] support click events
 
-## configuration
+# configuration
 
 if `--config` is not specified, `smolbar` looks for the toml configuration file at `~/.config/smolbar/config.toml`.
 
 for an example of a configuration, see the [examples](./examples).
+
+## header
+
+the header first sent to sway can be configured in the `header` table.
+it inherets all keys from the `Header` JSON object defined in `swaybar-protocol(5)`.
+
+## blocks
 
 there are three scopes which can be used to configure individual blocks.
 each scope has a level of control over the `Body`s of blocks: `immediate` has the highest precidence, then `local`, then `global`.

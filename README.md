@@ -47,6 +47,8 @@ each line of `command(local)`'s standard output is parsed in order as a field of
 
 #### example
 
+suppose the following script was a block's command.
+
 ```sh
 # interpreted as `full_text`
 echo "amazing status information"

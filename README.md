@@ -17,6 +17,7 @@ if `--config` is not specified, `smolbar` looks for the toml configuration file 
 for an example of a configuration, see the [examples](./examples).
 
 there are three scopes which can be used to configure individual blocks.
+each scope has a level of control over the `Body`s of blocks: `immediate` has the highest precidence, then `local`, then `global`.
 
 ### global
 

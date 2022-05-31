@@ -8,6 +8,7 @@ use std::str::FromStr;
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct Header {
     /// "The protocol version to use. Currently, this must be 1"
+    #[serde(default = "Header::default_version")]
     pub version: i32,
     /// "Whether to receive click event information to standard input"
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -21,6 +22,8 @@ pub struct Header {
 }
 
 impl Header {
+    /// Default value of [`Header::version`].
+    pub const DEFAULT_VERSION: i32 = 1;
     /// Default value of [`Header::cont_signal`].
     pub const DEFAULT_CONT_SIG: i32 = SIGCONT;
     /// Default value of [`Header::stop_signal`].
@@ -29,11 +32,15 @@ impl Header {
     /// Returns a new [`Header`] with all optional fields blank.
     pub const fn new() -> Self {
         Self {
-            version: 1,
+            version: Self::DEFAULT_VERSION,
             click_events: None,
             cont_signal: None,
             stop_signal: None,
         }
+    }
+
+    const fn default_version() -> i32 {
+        Self::DEFAULT_VERSION
     }
 }
 

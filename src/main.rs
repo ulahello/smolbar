@@ -8,7 +8,6 @@ use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::{broadcast, mpsc};
 use tokio::task::{self, JoinHandle};
 use tokio::time;
-use toml::Value;
 
 use std::fs;
 use std::io::{stdout, BufWriter, Write};
@@ -63,24 +62,32 @@ async fn try_main(args: Args) -> Result<(), Error> {
 
     info!("set config path to {}", path.display());
 
+    /* load configuration */
+    let config = Config::read_from_path(path)?;
+
     /* prepare to send continue and stop msgs to bar */
     // NOTE: signals may be forbidden, so a channel may not always be possible (hence option)
     let mut cont_recv = None;
     let mut stop_recv = None;
 
-    // TODO: be able to confiure header
-    let header = Header::new();
-
     let (sig_halt_send, _) = broadcast::channel(1);
 
     for (sig, recv, name) in [
         (
-            header.cont_signal.unwrap_or(Header::DEFAULT_CONT_SIG),
+            config
+                .toml
+                .header
+                .cont_signal
+                .unwrap_or(Header::DEFAULT_CONT_SIG),
             &mut cont_recv,
             "cont",
         ),
         (
-            header.stop_signal.unwrap_or(Header::DEFAULT_STOP_SIG),
+            config
+                .toml
+                .header
+                .stop_signal
+                .unwrap_or(Header::DEFAULT_STOP_SIG),
             &mut stop_recv,
             "stop",
         ),
@@ -123,7 +130,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
     }
 
     /* read bar from config */
-    let bar = Smolbar::new(path, header, cont_recv, stop_recv, sig_halt_send)?;
+    let bar = Smolbar::new(config, cont_recv, stop_recv, sig_halt_send)?;
 
     /* start printing and updating blocks */
     bar.init()?;
@@ -134,10 +141,51 @@ async fn try_main(args: Args) -> Result<(), Error> {
     Ok(())
 }
 
-pub struct Smolbar {
-    config_path: PathBuf,
-    cmd_dir: PathBuf,
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TomlConfig {
+    command_dir: Option<String>,
     header: Header,
+    #[serde(flatten)]
+    body: Body,
+    #[serde(rename = "block")]
+    blocks: Vec<TomlBlock>,
+}
+
+pub struct Config {
+    path: PathBuf,
+    command_dir: PathBuf,
+    toml: TomlConfig,
+}
+
+impl Config {
+    pub fn read_from_path(path: PathBuf) -> Result<Config, Error> {
+        let toml: TomlConfig = toml::from_str(&fs::read_to_string(path.clone())?)?;
+
+        // command_dir is either the config's parent path or whatever is
+        // specified in toml
+        let mut command_dir = path.parent().unwrap_or(&path).to_path_buf();
+        if let Some(ref dir) = toml.command_dir {
+            // if the toml command_dir is relative, its appended to the config
+            // path parent
+            command_dir.push(dir);
+        }
+
+        trace!(
+            "read {} block(s) from {}",
+            toml.blocks.len(),
+            path.display()
+        );
+
+        Ok(Self {
+            path,
+            command_dir,
+            toml,
+        })
+    }
+}
+
+pub struct Smolbar {
+    config: Config,
     blocks: Arc<Mutex<Option<Vec<Block>>>>,
 
     // sender is somewhere outside this struct. to safely drop the bar, we tell
@@ -153,20 +201,19 @@ pub struct Smolbar {
 
 impl Smolbar {
     pub fn new(
-        config: PathBuf,
-        header: Header,
+        config: Config,
         cont_recv: Option<mpsc::Receiver<bool>>,
         stop_recv: Option<mpsc::Receiver<bool>>,
         cont_stop_send_halt: broadcast::Sender<()>,
     ) -> Result<Self, Error> {
         // initialize bar without any blocks
         let (refresh_send, refresh_recv) = mpsc::channel(1);
-        let (toml_blocks, cmd_dir) = Self::read_config(config.clone())?;
+        let blocks = Arc::new(Mutex::new(Some(Vec::with_capacity(
+            config.toml.blocks.len(),
+        ))));
         let bar = Self {
-            config_path: config,
-            cmd_dir,
-            header,
-            blocks: Arc::new(Mutex::new(Some(Vec::with_capacity(toml_blocks.len())))),
+            config,
+            blocks,
             cont_recv,
             stop_recv,
             cont_stop_send_halt,
@@ -175,12 +222,13 @@ impl Smolbar {
         };
 
         // add blocks
-        for block in toml_blocks {
+        for block in &bar.config.toml.blocks {
             Self::push_block(
                 bar.blocks.clone(),
                 bar.refresh_send.clone(),
-                bar.cmd_dir.clone(),
-                block,
+                bar.config.command_dir.clone(),
+                block.clone(),
+                bar.config.toml.body.clone(),
             )
             .unwrap();
         }
@@ -189,10 +237,10 @@ impl Smolbar {
     }
 
     pub fn init(&self) -> Result<(), Error> {
-        ser::to_writer(stdout(), &self.header)?;
+        ser::to_writer(stdout(), &self.config.toml.header)?;
         write!(stdout(), "\n[")?;
 
-        trace!("sent header: {:?}", self.header);
+        trace!("sent header: {:?}", self.config.toml.header);
 
         Ok(())
     }
@@ -218,19 +266,19 @@ impl Smolbar {
                     trace!("stopped all blocks");
 
                     // read configuration
-                    let (toml_blocks, cmd_dir) = Self::read_config(self.config_path.clone())?;
-                    self.cmd_dir = cmd_dir;
+                    self.config = Config::read_from_path(self.config.path)?;
 
                     // reuse now-empty block vector
                     *blocks_c.lock().unwrap() = Some(blocks);
 
                     // add new blocks
-                    for block in toml_blocks {
+                    for block in self.config.toml.blocks {
                         Self::push_block(
                             blocks_c.clone(),
                             refresh_send_c.clone(),
-                            self.cmd_dir.clone(),
+                            self.config.command_dir.clone(),
                             block,
+                            self.config.toml.body.clone(),
                         )
                         .unwrap();
                     }
@@ -318,44 +366,17 @@ impl Smolbar {
         Ok(())
     }
 
-    // TODO: more generalized configuration (also flatten body global)
-    fn read_config(path: PathBuf) -> Result<(Vec<TomlBlock>, PathBuf), Error> {
-        let config = fs::read_to_string(path.clone())?;
-        let toml: Value = toml::from_str(&config)?;
-        let mut blocks = Vec::new();
-
-        // cmd_dir is either the config's parent path or whatever is specified
-        // in toml
-        let mut cmd_dir: PathBuf = path.parent().unwrap_or(&path).to_path_buf();
-        if let Some(Value::String(dir)) = toml.get("command_dir") {
-            // if the toml cmd_dir is relative, its appended to the config
-            // path parent
-            cmd_dir.push(PathBuf::from(dir));
-        }
-
-        if let Value::Table(items) = toml {
-            for (name, item) in items {
-                if let Ok(block) = item.try_into() {
-                    blocks.push(block);
-                }
-            }
-        }
-
-        trace!("read {} block(s) from {}", blocks.len(), path.display());
-
-        Ok((blocks, cmd_dir))
-    }
-
     #[must_use]
     fn push_block(
         blocks: Arc<Mutex<Option<Vec<Block>>>>,
         refresh_send: mpsc::Sender<bool>,
         cmd_dir: PathBuf,
         block: TomlBlock,
+        global: Body,
     ) -> Option<()> {
         if let Some(vec) = &mut *blocks.lock().unwrap() {
             trace!("pushed block with command `{}`", block.command);
-            vec.push(Block::new(block, refresh_send, cmd_dir));
+            vec.push(Block::new(block, global, refresh_send, cmd_dir));
             Some(())
         } else {
             trace!("unable to push block with command `{}`", block.command);
@@ -364,7 +385,7 @@ impl Smolbar {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TomlBlock {
     command: String,
     prefix: Option<String>,
@@ -395,7 +416,12 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(toml: TomlBlock, bar_refresh: mpsc::Sender<bool>, cmd_dir: PathBuf) -> Self {
+    pub fn new(
+        toml: TomlBlock,
+        global: Body,
+        bar_refresh: mpsc::Sender<bool>,
+        cmd_dir: PathBuf,
+    ) -> Self {
         let body = Arc::new(Mutex::new(Body::new()));
 
         let (sig_send, mut sig_recv) = mpsc::channel(1);
@@ -429,7 +455,8 @@ impl Block {
                                     fn update<T: Clone + FromStr>(
                                         field: &mut Option<T>,
                                         value: Option<&str>,
-                                        or: &Option<T>,
+                                        local: &Option<T>,
+                                        global: &Option<T>,
                                     ) {
                                         *field = match value {
                                             Some(val) => match val.parse() {
@@ -438,38 +465,42 @@ impl Block {
                                             },
                                             None => None,
                                         }
-                                        .or_else(|| or.clone());
+                                        .or_else(|| local.clone())
+                                        .or_else(|| global.clone());
                                     }
 
-                                    update(&mut body.full_text, lines.next(), &toml.body.full_text);
-                                    update(&mut body.short_text, lines.next(), &toml.body.short_text);
-                                    update(&mut body.color, lines.next(), &toml.body.color);
-                                    update(&mut body.background, lines.next(), &toml.body.background);
-                                    update(&mut body.border, lines.next(), &toml.body.border);
-                                    update(&mut body.border_top, lines.next(), &toml.body.border_top);
+                                    update(&mut body.full_text, lines.next(), &toml.body.full_text, &global.full_text);
+                                    update(&mut body.short_text, lines.next(), &toml.body.short_text, &global.short_text);
+                                    update(&mut body.color, lines.next(), &toml.body.color, &global.color);
+                                    update(&mut body.background, lines.next(), &toml.body.background, &global.background);
+                                    update(&mut body.border, lines.next(), &toml.body.border, &global.border);
+                                    update(&mut body.border_top, lines.next(), &toml.body.border_top, &global.border_top);
                                     update(
                                         &mut body.border_bottom,
                                         lines.next(),
                                         &toml.body.border_bottom,
+                                        &global.border_bottom,
                                     );
-                                    update(&mut body.border_left, lines.next(), &toml.body.border_left);
+                                    update(&mut body.border_left, lines.next(), &toml.body.border_left, &global.border_left);
                                     update(
                                         &mut body.border_right,
                                         lines.next(),
                                         &toml.body.border_right,
+                                        &global.border_right,
                                     );
-                                    update(&mut body.min_width, lines.next(), &toml.body.min_width);
-                                    update(&mut body.align, lines.next(), &toml.body.align);
-                                    update(&mut body.name, lines.next(), &toml.body.name);
-                                    update(&mut body.instance, lines.next(), &toml.body.instance);
-                                    update(&mut body.urgent, lines.next(), &toml.body.urgent);
-                                    update(&mut body.separator, lines.next(), &toml.body.separator);
+                                    update(&mut body.min_width, lines.next(), &toml.body.min_width, &global.min_width);
+                                    update(&mut body.align, lines.next(), &toml.body.align, &global.align);
+                                    update(&mut body.name, lines.next(), &toml.body.name, &global.name);
+                                    update(&mut body.instance, lines.next(), &toml.body.instance, &global.instance);
+                                    update(&mut body.urgent, lines.next(), &toml.body.urgent, &global.urgent);
+                                    update(&mut body.separator, lines.next(), &toml.body.separator, &global.separator);
                                     update(
                                         &mut body.separator_block_width,
                                         lines.next(),
                                         &toml.body.separator_block_width,
+                                        &global.separator_block_width,
                                     );
-                                    update(&mut body.markup, lines.next(), &toml.body.markup);
+                                    update(&mut body.markup, lines.next(), &toml.body.markup, &global.markup);
 
                                     // full text is prefixed by `prefix`, postfixed by `postfix` field in toml
                                     if let Some(ref prefix) = toml.prefix {

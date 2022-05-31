@@ -20,11 +20,15 @@ there are three scopes which can be used to configure individual blocks.
 
 ### global
 
+`global` inherets all keys from the `Body` JSON object defined in `swaybar-protocol(5)`.
+
 | key         | description                                  |
 |-------------|----------------------------------------------|
 | command_dir | sets the path to execute `command(local)` in |
 
 ### local
+
+all local blocks are tables in the table array `block`.
 
 `local` inherets all keys from the `Body` JSON object defined in `swaybar-protocol(5)`.
 

@@ -8,7 +8,7 @@ use crate::protocol::{Body, Header};
 use crate::Error;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct TomlConfig {
+pub struct TomlBar {
     pub command_dir: Option<String>,
     pub header: Header,
     #[serde(flatten)]
@@ -32,12 +32,12 @@ pub struct TomlBlock {
 pub struct Config {
     pub path: PathBuf,
     pub command_dir: PathBuf,
-    pub toml: TomlConfig,
+    pub toml: TomlBar,
 }
 
 impl Config {
     pub fn read_from_path(path: PathBuf) -> Result<Config, Error> {
-        let toml: TomlConfig = toml::from_str(&fs::read_to_string(path.clone())?)?;
+        let toml: TomlBar = toml::from_str(&fs::read_to_string(path.clone())?)?;
 
         // command_dir is either the config's parent path or whatever is
         // specified in toml

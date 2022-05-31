@@ -14,6 +14,7 @@ use crate::config::TomlBlock;
 use crate::protocol::Body;
 
 #[derive(Debug)]
+#[must_use]
 pub struct Block {
     body: Arc<Mutex<Body>>,
 
@@ -32,6 +33,7 @@ pub struct Block {
 }
 
 impl Block {
+    #[allow(clippy::items_after_statements)]
     pub fn new(
         toml: TomlBlock,
         global: Body,
@@ -129,7 +131,7 @@ impl Block {
 
                                     if let Some(ref mut full_text) = body.full_text {
                                         if let Some(postfix) = &toml.postfix {
-                                            full_text.push_str(postfix)
+                                            full_text.push_str(postfix);
                                         }
                                     };
                                 }

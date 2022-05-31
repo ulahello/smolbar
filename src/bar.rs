@@ -52,7 +52,7 @@ impl Smolbar {
         // add blocks
         for block in &bar.config.toml.blocks {
             Self::push_block(
-                bar.blocks.clone(),
+                &bar.blocks,
                 bar.refresh_send.clone(),
                 bar.config.command_dir.clone(),
                 block.clone(),
@@ -102,7 +102,7 @@ impl Smolbar {
                     // add new blocks
                     for block in self.config.toml.blocks {
                         Self::push_block(
-                            blocks_c.clone(),
+                            &blocks_c,
                             refresh_send_c.clone(),
                             self.config.command_dir.clone(),
                             block,
@@ -196,7 +196,7 @@ impl Smolbar {
 
     #[must_use]
     fn push_block(
-        blocks: Arc<Mutex<Option<Vec<Block>>>>,
+        blocks: &Arc<Mutex<Option<Vec<Block>>>>,
         refresh_send: mpsc::Sender<bool>,
         cmd_dir: PathBuf,
         block: TomlBlock,

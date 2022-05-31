@@ -6,6 +6,7 @@ use std::str::FromStr;
 
 /// Header object as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[must_use]
 pub struct Header {
     /// "The protocol version to use. Currently, this must be 1"
     #[serde(default = "Header::default_version")]
@@ -57,6 +58,7 @@ impl Default for Header {
 
 /// Body element as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[must_use]
 pub struct Body {
     // TODO: do i have to copy-paste this attribute
     /// "The text that will be displayed. If missing, the block will be skipped."
@@ -177,6 +179,7 @@ impl Default for Body {
 /// [Body alignment](Body::align), as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
+#[must_use]
 pub enum Align {
     Left,
     Right,
@@ -199,6 +202,7 @@ impl FromStr for Align {
 /// [Body markup](Body::markup), as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
+#[must_use]
 pub enum Markup {
     Pango,
     None,
@@ -218,6 +222,7 @@ impl FromStr for Markup {
 
 /// Click event, as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[must_use]
 pub struct ClickEvent {
     /// "The name of the block, if set"
     pub name: Option<String>,

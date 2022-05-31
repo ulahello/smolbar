@@ -37,7 +37,7 @@ pub struct Config {
 
 impl Config {
     pub fn read_from_path(path: PathBuf) -> Result<Config, Error> {
-        let toml: TomlBar = toml::from_str(&fs::read_to_string(path.clone())?)?;
+        let toml: TomlBar = toml::from_str(&fs::read_to_string(&path)?)?;
 
         // command_dir is either the config's parent path or whatever is
         // specified in toml

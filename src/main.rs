@@ -18,12 +18,6 @@ use smolbar::Error;
 // TODO: full documentation
 // TODO: when reloading config to no blocks, blocks stay visible (must send empty for each block)
 
-/* TODO: `smolbar | vi` panics. this is because broken pipe error.
- * refresh is unable to write to stdout, ? operator returns early
- * without proper cleanup. tasks which depend on refresh being alive
- * start to fail.
- */
-
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
 struct Args {

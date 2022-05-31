@@ -190,7 +190,7 @@ impl Smolbar {
                 .await
                 .unwrap()
                 {
-                    Ok(recv) => {
+                    Ok(()) => {
                         break;
                     }
                     Err((recv, error)) => {

@@ -60,7 +60,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
         }
     };
 
-    info!("set config path to {}", path.display());
+    info!("set config path to '{}'", path.display());
 
     /* load configuration */
     let config = Config::read_from_path(path)?;

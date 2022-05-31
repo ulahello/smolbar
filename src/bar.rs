@@ -121,7 +121,6 @@ impl Smolbar {
 
                         Err(error) => {
                             error!(
-                                // TODO: consistent quoting of paths
                                 "reading config from '{}' failed: {}",
                                 self.config.path.display(),
                                 error

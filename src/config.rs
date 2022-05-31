@@ -49,7 +49,7 @@ impl Config {
         }
 
         trace!(
-            "read {} block(s) from {}",
+            "read {} block(s) from '{}'",
             toml.blocks.len(),
             path.display()
         );

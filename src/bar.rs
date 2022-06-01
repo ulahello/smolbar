@@ -33,7 +33,7 @@ impl Smolbar {
         cont_recv: Option<mpsc::Receiver<bool>>,
         stop_recv: Option<mpsc::Receiver<bool>>,
         cont_stop_send_halt: broadcast::Sender<()>,
-    ) -> Result<Self, Error> {
+    ) -> Self {
         // initialize bar without any blocks
         let (refresh_send, refresh_recv) = mpsc::channel(1);
         let blocks = Arc::new(Mutex::new(Some(Vec::with_capacity(
@@ -61,7 +61,7 @@ impl Smolbar {
             .unwrap();
         }
 
-        Ok(bar)
+        bar
     }
 
     pub fn init(&self) -> Result<(), Error> {

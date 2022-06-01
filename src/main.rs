@@ -124,7 +124,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
     }
 
     /* read bar from config */
-    let bar = Smolbar::new(config, cont_recv, stop_recv, sig_halt_send)?;
+    let bar = Smolbar::new(config, cont_recv, stop_recv, sig_halt_send);
 
     /* start printing and updating blocks */
     bar.init()?;

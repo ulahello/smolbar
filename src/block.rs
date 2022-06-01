@@ -1,3 +1,4 @@
+use log::error;
 use tokio::select;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::mpsc;
@@ -62,82 +63,92 @@ impl Block {
                         // (which could take arbitrary time)
                         Some(false) = cmd_recv.recv() => break,
 
-                        Ok(output) = task::spawn_blocking(move || command.output()) => {
-                            // refresh block body
-                            if let Ok(utf8) = String::from_utf8(output.unwrap().stdout) {
-                                let mut lines = utf8.lines();
+                        // refresh block body
+                        Ok(try_output) = task::spawn_blocking(move || command.output()) => {
+                            match try_output {
+                                Ok(output) => {
+                                    if let Ok(utf8) = String::from_utf8(output.stdout) {
+                                        let mut lines = utf8.lines();
 
-                                {
-                                    let mut body = body_c.lock().unwrap();
+                                        {
+                                            let mut body = body_c.lock().unwrap();
 
-                                    fn update<T: Clone + FromStr>(
-                                        field: &mut Option<T>,
-                                        value: Option<&str>,
-                                        local: &Option<T>,
-                                        global: &Option<T>,
-                                    ) {
-                                        *field = match value {
-                                            Some(val) => match val.parse() {
-                                                Ok(new) => Some(new),
-                                                Err(_) => None,
-                                            },
-                                            None => None,
+                                            fn update<T: Clone + FromStr>(
+                                                field: &mut Option<T>,
+                                                value: Option<&str>,
+                                                local: &Option<T>,
+                                                global: &Option<T>,
+                                            ) {
+                                                *field = match value {
+                                                    Some(val) => match val.parse() {
+                                                        Ok(new) => Some(new),
+                                                        Err(_) => None,
+                                                    },
+                                                    None => None,
+                                                }
+                                                .or_else(|| local.clone())
+                                                .or_else(|| global.clone());
+                                            }
+
+                                            update(&mut body.full_text, lines.next(), &toml.body.full_text, &global.full_text);
+                                            update(&mut body.short_text, lines.next(), &toml.body.short_text, &global.short_text);
+                                            update(&mut body.color, lines.next(), &toml.body.color, &global.color);
+                                            update(&mut body.background, lines.next(), &toml.body.background, &global.background);
+                                            update(&mut body.border, lines.next(), &toml.body.border, &global.border);
+                                            update(&mut body.border_top, lines.next(), &toml.body.border_top, &global.border_top);
+                                            update(
+                                                &mut body.border_bottom,
+                                                lines.next(),
+                                                &toml.body.border_bottom,
+                                                &global.border_bottom,
+                                            );
+                                            update(&mut body.border_left, lines.next(), &toml.body.border_left, &global.border_left);
+                                            update(
+                                                &mut body.border_right,
+                                                lines.next(),
+                                                &toml.body.border_right,
+                                                &global.border_right,
+                                            );
+                                            update(&mut body.min_width, lines.next(), &toml.body.min_width, &global.min_width);
+                                            update(&mut body.align, lines.next(), &toml.body.align, &global.align);
+                                            update(&mut body.name, lines.next(), &toml.body.name, &global.name);
+                                            update(&mut body.instance, lines.next(), &toml.body.instance, &global.instance);
+                                            update(&mut body.urgent, lines.next(), &toml.body.urgent, &global.urgent);
+                                            update(&mut body.separator, lines.next(), &toml.body.separator, &global.separator);
+                                            update(
+                                                &mut body.separator_block_width,
+                                                lines.next(),
+                                                &toml.body.separator_block_width,
+                                                &global.separator_block_width,
+                                            );
+                                            update(&mut body.markup, lines.next(), &toml.body.markup, &global.markup);
+
+                                            // full text is prefixed by `prefix`, postfixed by `postfix` field in toml
+                                            if let Some(ref prefix) = toml.prefix {
+                                                if let Some(full_text) = &body.full_text {
+                                                    let mut prefix = prefix.to_string();
+                                                    prefix.push_str(full_text);
+                                                    body.full_text = Some(prefix);
+                                                }
+                                            }
+
+                                            if let Some(ref mut full_text) = body.full_text {
+                                                if let Some(postfix) = &toml.postfix {
+                                                    full_text.push_str(postfix);
+                                                }
+                                            };
                                         }
-                                        .or_else(|| local.clone())
-                                        .or_else(|| global.clone());
+
+                                        // ping parent bar to let know we are refreshed
+                                        bar_refresh.send(true).await.unwrap();
+                                    } else {
+                                        error!("block command `{}` produced invalid utf8", toml.command);
                                     }
-
-                                    update(&mut body.full_text, lines.next(), &toml.body.full_text, &global.full_text);
-                                    update(&mut body.short_text, lines.next(), &toml.body.short_text, &global.short_text);
-                                    update(&mut body.color, lines.next(), &toml.body.color, &global.color);
-                                    update(&mut body.background, lines.next(), &toml.body.background, &global.background);
-                                    update(&mut body.border, lines.next(), &toml.body.border, &global.border);
-                                    update(&mut body.border_top, lines.next(), &toml.body.border_top, &global.border_top);
-                                    update(
-                                        &mut body.border_bottom,
-                                        lines.next(),
-                                        &toml.body.border_bottom,
-                                        &global.border_bottom,
-                                    );
-                                    update(&mut body.border_left, lines.next(), &toml.body.border_left, &global.border_left);
-                                    update(
-                                        &mut body.border_right,
-                                        lines.next(),
-                                        &toml.body.border_right,
-                                        &global.border_right,
-                                    );
-                                    update(&mut body.min_width, lines.next(), &toml.body.min_width, &global.min_width);
-                                    update(&mut body.align, lines.next(), &toml.body.align, &global.align);
-                                    update(&mut body.name, lines.next(), &toml.body.name, &global.name);
-                                    update(&mut body.instance, lines.next(), &toml.body.instance, &global.instance);
-                                    update(&mut body.urgent, lines.next(), &toml.body.urgent, &global.urgent);
-                                    update(&mut body.separator, lines.next(), &toml.body.separator, &global.separator);
-                                    update(
-                                        &mut body.separator_block_width,
-                                        lines.next(),
-                                        &toml.body.separator_block_width,
-                                        &global.separator_block_width,
-                                    );
-                                    update(&mut body.markup, lines.next(), &toml.body.markup, &global.markup);
-
-                                    // full text is prefixed by `prefix`, postfixed by `postfix` field in toml
-                                    if let Some(ref prefix) = toml.prefix {
-                                        if let Some(full_text) = &body.full_text {
-                                            let mut prefix = prefix.to_string();
-                                            prefix.push_str(full_text);
-                                            body.full_text = Some(prefix);
-                                        }
-                                    }
-
-                                    if let Some(ref mut full_text) = body.full_text {
-                                        if let Some(postfix) = &toml.postfix {
-                                            full_text.push_str(postfix);
-                                        }
-                                    };
                                 }
 
-                                // ping parent bar to let know we are refreshed
-                                bar_refresh.send(true).await.unwrap();
+                                Err(error) => {
+                                    error!("block command `{}`: {}", toml.command, error);
+                                }
                             }
                         }
                     );

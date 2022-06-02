@@ -1,7 +1,5 @@
 # smolbar
 
-**warning: not done**
-
 `smolbar` is a smol status command for [sway](https://github.com/swaywm/sway).
 
 ## milestones

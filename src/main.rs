@@ -6,6 +6,7 @@ use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::{broadcast, mpsc};
 use tokio::task;
 
+use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::process;
 
@@ -27,6 +28,10 @@ struct Args {
     /// config directory.
     #[clap(short, long)]
     config: Option<PathBuf>,
+
+    /// Print license information
+    #[clap(short, long)]
+    license: bool,
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -40,6 +45,12 @@ async fn main() {
 }
 
 async fn try_main(args: Args) -> Result<(), Error> {
+    /* print license information */
+    if args.license {
+        writeln!(stdout(), "{}", env!("CARGO_PKG_LICENSE"))?;
+        return Ok(());
+    }
+
     /* get configuration file */
     let path = match args.config {
         Some(path) => path,

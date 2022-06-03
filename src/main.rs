@@ -8,7 +8,7 @@ use tokio::task;
 
 use std::io::{stdout, Write};
 use std::path::PathBuf;
-use std::process;
+use std::process::ExitCode;
 
 use smolbar::bar::Smolbar;
 use smolbar::config::Config;
@@ -35,12 +35,14 @@ struct Args {
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() {
+async fn main() -> ExitCode {
     logger::init(LevelFilter::Trace).unwrap();
 
     if let Err(err) = try_main(Args::parse()).await {
         eprintln!("fatal: {}", err);
-        process::exit(1);
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
     }
 }
 

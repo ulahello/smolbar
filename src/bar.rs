@@ -96,7 +96,9 @@ impl Smolbar {
                                     // write each json block
                                     match write!(stdout, "[") {
                                         Ok(()) => (),
-                                        Err(error) => return Err((self.refresh_recv, error.into())),
+                                        Err(error) => {
+                                            return Err((self.refresh_recv, error.into()));
+                                        }
                                     }
 
                                     for (i, block) in blocks.iter().enumerate() {
@@ -107,7 +109,9 @@ impl Smolbar {
                                                 .expect("invalid body json. this is a bug.")
                                         ) {
                                             Ok(()) => (),
-                                            Err(error) => return Err((self.refresh_recv, error.into())),
+                                            Err(error) => {
+                                                return Err((self.refresh_recv, error.into()));
+                                            }
                                         }
 
                                         // last block doesn't have comma after it
@@ -115,7 +119,7 @@ impl Smolbar {
                                             match writeln!(stdout, ",") {
                                                 Ok(()) => (),
                                                 Err(error) => {
-                                                    return Err((self.refresh_recv, error.into()))
+                                                    return Err((self.refresh_recv, error.into()));
                                                 }
                                             }
                                         }
@@ -123,12 +127,16 @@ impl Smolbar {
 
                                     match writeln!(stdout, "],") {
                                         Ok(()) => (),
-                                        Err(error) => return Err((self.refresh_recv, error.into())),
+                                        Err(error) => {
+                                            return Err((self.refresh_recv, error.into()));
+                                        }
                                     }
 
                                     match stdout.flush() {
                                         Ok(()) => (),
-                                        Err(error) => return Err((self.refresh_recv, error.into())),
+                                        Err(error) => {
+                                            return Err((self.refresh_recv, error.into()));
+                                        }
                                     }
 
                                     trace!("bar sent {} block(s)", blocks.len());

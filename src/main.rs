@@ -16,7 +16,6 @@ use smolbar::protocol::Header;
 use smolbar::Error;
 
 // TODO: full documentation
-// TODO: when reloading config to no blocks, blocks stay visible (must send empty for each block)
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]

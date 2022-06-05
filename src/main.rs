@@ -1,16 +1,15 @@
 use clap::Parser;
 use dirs::config_dir;
 use log::{info, trace, LevelFilter};
-use tokio::select;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::{broadcast, mpsc};
-use tokio::task;
+use tokio::{select, task};
 
 use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use smolbar::bar::Smolbar;
+use smolbar::bar::{ContOrStop, Smolbar};
 use smolbar::config::Config;
 use smolbar::logger;
 use smolbar::protocol::Header;
@@ -74,19 +73,18 @@ async fn try_main(args: Args) -> Result<(), Error> {
 
     /* prepare to send continue and stop msgs to bar */
     // NOTE: signals may be forbidden, so a channel may not always be possible (hence option)
-    let mut cont_recv = None;
-    let mut stop_recv = None;
+    let (cont_stop_send, cont_stop_recv) = mpsc::channel(1);
 
     let (sig_halt_send, _) = broadcast::channel(1);
 
-    for (sig, recv, name) in [
+    for (sig, msg, name) in [
         (
             config
                 .toml
                 .header
                 .cont_signal
                 .unwrap_or(Header::DEFAULT_CONT_SIG),
-            &mut cont_recv,
+            ContOrStop::Cont,
             "cont",
         ),
         (
@@ -95,7 +93,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
                 .header
                 .stop_signal
                 .unwrap_or(Header::DEFAULT_STOP_SIG),
-            &mut stop_recv,
+            ContOrStop::Stop,
             "stop",
         ),
     ] {
@@ -106,23 +104,18 @@ async fn try_main(args: Args) -> Result<(), Error> {
             trace!("{} signal {} is valid, listening", name, sig.as_raw_value());
 
             let mut halt_recv = sig_halt_send.subscribe();
-
-            let channel = mpsc::channel(1);
-            let send = channel.0;
-            *recv = Some(channel.1);
+            let send = cont_stop_send.clone();
 
             task::spawn(async move {
                 loop {
                     select!(
                         stream = stream.recv() => {
                             stream.unwrap();
-                            send.send(true).await.unwrap();
+                            send.send(msg).await.unwrap();
                         }
 
                         halt = halt_recv.recv() => {
                             halt.unwrap();
-                            // halt the receiving end
-                            send.send(false).await.unwrap();
 
                             // halt
                             trace!("{} signal listener shutting down", name);
@@ -137,7 +130,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
     }
 
     /* read bar from config */
-    let bar = Smolbar::new(config, cont_recv, stop_recv, sig_halt_send);
+    let bar = Smolbar::new(config, cont_stop_recv, sig_halt_send).await;
 
     /* start printing and updating blocks */
     bar.init()?;

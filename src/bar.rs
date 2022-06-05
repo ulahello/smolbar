@@ -1,11 +1,11 @@
 use log::{error, info, trace};
 use serde_json::ser;
-use tokio::sync::{broadcast, mpsc};
-use tokio::task;
+use tokio::sync::{broadcast, mpsc, Mutex};
+use tokio::{select, task};
 
 use std::io::{stdout, BufWriter, Write};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::block::Block;
 use crate::config::{Config, TomlBlock};
@@ -18,8 +18,7 @@ pub struct Smolbar {
 
     // sender is somewhere outside this struct. to safely drop the bar, we tell
     // that sender to halt through cont_stop_send_halt.
-    cont_recv: Option<mpsc::Receiver<bool>>,
-    stop_recv: Option<mpsc::Receiver<bool>>,
+    cont_stop_recv: mpsc::Receiver<ContOrStop>,
     cont_stop_send_halt: broadcast::Sender<()>,
 
     // the receiver is kept alive as long as it receives true.
@@ -28,10 +27,9 @@ pub struct Smolbar {
 }
 
 impl Smolbar {
-    pub fn new(
+    pub async fn new(
         config: Config,
-        cont_recv: Option<mpsc::Receiver<bool>>,
-        stop_recv: Option<mpsc::Receiver<bool>>,
+        cont_stop_recv: mpsc::Receiver<ContOrStop>,
         cont_stop_send_halt: broadcast::Sender<()>,
     ) -> Self {
         // initialize bar without any blocks
@@ -42,8 +40,7 @@ impl Smolbar {
         let bar = Self {
             config,
             blocks,
-            cont_recv,
-            stop_recv,
+            cont_stop_recv,
             cont_stop_send_halt,
             refresh_recv,
             refresh_send,
@@ -58,6 +55,7 @@ impl Smolbar {
                 block.clone(),
                 bar.config.toml.body.clone(),
             )
+            .await
             .unwrap();
         }
 
@@ -74,122 +72,77 @@ impl Smolbar {
     }
 
     pub async fn run(mut self) -> Result<(), Error> {
-        /* listen for cont */
-        let blocks_c = self.blocks.clone();
-        let refresh_send_c = self.refresh_send.clone();
-        let mut cont = None;
-        if let Some(mut cont_recv) = self.cont_recv {
-            cont = Some(task::spawn(async move {
-                while cont_recv.recv().await.unwrap() {
-                    /* reload configuration */
-                    trace!("bar received cont");
-                    info!("reloading config");
-
-                    // read configuration
-                    match Config::read_from_path(self.config.path.clone()) {
-                        Ok(config) => {
-                            self.config = config;
-
-                            // stop all blocks
-                            let mut blocks = blocks_c.lock().unwrap().take().unwrap();
-                            for block in blocks.drain(..) {
-                                block.stop().await;
-                            }
-
-                            trace!("stopped all blocks");
-
-                            // reuse now-empty block vector
-                            *blocks_c.lock().unwrap() = Some(blocks);
-
-                            // add new blocks
-                            for block in self.config.toml.blocks {
-                                Self::push_block(
-                                    &blocks_c,
-                                    refresh_send_c.clone(),
-                                    self.config.command_dir.clone(),
-                                    block,
-                                    self.config.toml.body.clone(),
-                                )
-                                .unwrap();
-                            }
-
-                            // dont hang on to unused capacity
-                            if let Some(ref mut blocks) = *blocks_c.lock().unwrap() {
-                                blocks.shrink_to_fit();
-                            }
-                        }
-
-                        Err(error) => {
-                            error!(
-                                "reading config from '{}' failed: {}",
-                                self.config.path.display(),
-                                error
-                            );
-                            info!("keeping current configuration");
-                        }
-                    }
-                }
-            }));
-        }
-
         /* listen for refresh */
         let blocks_c = self.blocks.clone();
         let refresh = task::spawn(async move {
             loop {
                 let blocks_c = blocks_c.clone();
-                match task::spawn(async move {
+                let inner = task::spawn(async move {
                     let mut stdout = BufWriter::new(stdout());
 
                     // continue as long as receive true
                     while self.refresh_recv.recv().await.unwrap() {
-                        if let Some(ref blocks) = *blocks_c.lock().unwrap() {
-                            // write each json block
-                            match write!(stdout, "[") {
-                                Ok(()) => (),
-                                Err(error) => return Err((self.refresh_recv, error.into())),
+                        select!(
+                            // we may receive a halt msg while waiting to take
+                            // the lock
+                            msg = self.refresh_recv.recv() => {
+                                if !msg.unwrap() {
+                                    break;
+                                }
                             }
 
-                            for (i, block) in blocks.iter().enumerate() {
-                                match write!(
-                                    stdout,
-                                    "{}",
-                                    ser::to_string_pretty(&*block.read())
-                                        .expect("invalid body json. this is a bug.")
-                                ) {
-                                    Ok(()) => (),
-                                    Err(error) => return Err((self.refresh_recv, error.into())),
-                                }
-
-                                // last block doesn't have comma after it
-                                if i != blocks.len() - 1 {
-                                    match writeln!(stdout, ",") {
+                            guard = blocks_c.lock() => {
+                                if let Some(ref blocks) = *guard {
+                                    // write each json block
+                                    match write!(stdout, "[") {
                                         Ok(()) => (),
-                                        Err(error) => {
-                                            return Err((self.refresh_recv, error.into()))
+                                        Err(error) => return Err((self.refresh_recv, error.into())),
+                                    }
+
+                                    for (i, block) in blocks.iter().enumerate() {
+                                        match write!(
+                                            stdout,
+                                            "{}",
+                                            ser::to_string_pretty(&*block.read())
+                                                .expect("invalid body json. this is a bug.")
+                                        ) {
+                                            Ok(()) => (),
+                                            Err(error) => return Err((self.refresh_recv, error.into())),
+                                        }
+
+                                        // last block doesn't have comma after it
+                                        if i != blocks.len() - 1 {
+                                            match writeln!(stdout, ",") {
+                                                Ok(()) => (),
+                                                Err(error) => {
+                                                    return Err((self.refresh_recv, error.into()))
+                                                }
+                                            }
                                         }
                                     }
+
+                                    match writeln!(stdout, "],") {
+                                        Ok(()) => (),
+                                        Err(error) => return Err((self.refresh_recv, error.into())),
+                                    }
+
+                                    match stdout.flush() {
+                                        Ok(()) => (),
+                                        Err(error) => return Err((self.refresh_recv, error.into())),
+                                    }
+
+                                    trace!("bar sent {} block(s)", blocks.len());
+                                } else {
+                                    unreachable!("refresh loop expects that guard is held while blocks are taken");
                                 }
                             }
-
-                            match writeln!(stdout, "],") {
-                                Ok(()) => (),
-                                Err(error) => return Err((self.refresh_recv, error.into())),
-                            }
-
-                            match stdout.flush() {
-                                Ok(()) => (),
-                                Err(error) => return Err((self.refresh_recv, error.into())),
-                            }
-
-                            trace!("bar sent {} block(s)", blocks.len());
-                        }
+                        );
                     }
 
                     Ok::<(), (_, Error)>(())
-                })
-                .await
-                .unwrap()
-                {
+                });
+
+                match inner.await.unwrap() {
                     Ok(()) => {
                         break;
                     }
@@ -201,57 +154,105 @@ impl Smolbar {
             }
         });
 
-        /* listen for stop */
-        if let Some(mut stop_recv) = self.stop_recv {
-            // we await this because we want to return (and end program) when we
-            // recieve stop
-            task::spawn(async move {
-                stop_recv.recv().await.unwrap();
+        /* listen for cont and stop */
+        let blocks_c = self.blocks.clone();
+        task::spawn(async move {
+            loop {
+                match self.cont_stop_recv.recv().await.unwrap() {
+                    ContOrStop::Cont => {
+                        /* reload configuration */
+                        trace!("bar received cont");
+                        info!("reloading config");
 
-                /* we received stop signal */
-                trace!("bar received stop");
+                        // read configuration
+                        match Config::read_from_path(self.config.path.clone()) {
+                            Ok(config) => {
+                                self.config = config;
 
-                // stop each block. we do this first because blocks expect
-                // self.refresh_recv to be alive.
-                let blocks = self.blocks.lock().unwrap().take().unwrap();
-                for block in blocks {
-                    block.stop().await;
+                                {
+                                    // stop all blocks
+                                    let mut guard = blocks_c.lock().await;
+                                    let blocks = guard.take().unwrap();
+                                    for block in blocks {
+                                        block.stop().await;
+                                    }
+
+                                    // after taking, put back Some before releasing the guard
+                                    *guard =
+                                        Some(Vec::with_capacity(self.config.toml.blocks.len()));
+
+                                    trace!("cont: stopped all blocks");
+                                }
+
+                                // add new blocks
+                                for block in self.config.toml.blocks {
+                                    Self::push_block(
+                                        &blocks_c,
+                                        self.refresh_send.clone(),
+                                        self.config.command_dir.clone(),
+                                        block,
+                                        self.config.toml.body.clone(),
+                                    )
+                                    .await
+                                    .unwrap();
+                                }
+
+                                trace!("done reloading");
+                            }
+
+                            Err(error) => {
+                                error!(
+                                    "reading config from '{}' failed: {}",
+                                    self.config.path.display(),
+                                    error
+                                );
+                                info!("keeping current configuration");
+                            }
+                        }
+                    }
+
+                    ContOrStop::Stop => {
+                        /* we received stop signal */
+                        trace!("bar received stop");
+
+                        // stop each block. we do this first because blocks expect
+                        // self.refresh_recv to be alive.
+                        let mut guard = self.blocks.lock().await;
+                        let blocks = guard.take().unwrap();
+                        for block in blocks {
+                            block.stop().await;
+                        }
+
+                        trace!("stop: stopped all blocks");
+
+                        // tell `refresh` to halt, now that all blocks are dropped
+                        trace!("stop: sending halt to refresh loop");
+                        self.refresh_send.send(false).await.unwrap();
+                        trace!("stop: waiting for refresh loop to halt");
+                        refresh.await.unwrap();
+
+                        // tell the senders attached to cont/stop recv to halt
+                        self.cont_stop_send_halt.send(()).unwrap();
+
+                        break;
+                    }
                 }
-
-                trace!("stopped all blocks");
-
-                // tell `refresh` to halt, now that all blocks are dropped
-                self.refresh_send.send(false).await.unwrap();
-                refresh.await.unwrap();
-
-                // tell the senders attached to cont/stop recv to halt
-                self.cont_stop_send_halt.send(()).unwrap();
-
-                // wait for cont to stop before returning and dropping the bar
-                if let Some(task) = cont {
-                    task.await.unwrap();
-                }
-            })
-            .await
-            .unwrap();
-        } else {
-            // if there is no valid stop signal to listen for, await the refresh
-            // loop (loop not expected to break)
-            refresh.await.unwrap();
-        }
+            }
+        })
+        .await
+        .unwrap();
 
         Ok(())
     }
 
-    #[must_use]
-    fn push_block(
+    async fn push_block(
         blocks: &Arc<Mutex<Option<Vec<Block>>>>,
         refresh_send: mpsc::Sender<bool>,
         cmd_dir: PathBuf,
         block: TomlBlock,
         global: Body,
     ) -> Option<()> {
-        if let Some(vec) = &mut *blocks.lock().unwrap() {
+        if let Some(vec) = &mut *blocks.lock().await {
             trace!("pushed block with command `{}`", block.command);
             vec.push(Block::new(block, global, refresh_send, cmd_dir));
             Some(())
@@ -260,4 +261,10 @@ impl Smolbar {
             None
         }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ContOrStop {
+    Cont,
+    Stop,
 }

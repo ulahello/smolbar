@@ -50,9 +50,7 @@ all local blocks are tables in the table array `block`.
 
 each line of `command(local)`'s standard output is parsed in order as a field of the `Body` JSON object defined in `swaybar-protocol(5)`.
 
-#### example
-
-suppose the following script was a block's command.
+for example, suppose the following script was a block's command:
 
 ```sh
 # interpreted as `full_text`

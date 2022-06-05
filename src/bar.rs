@@ -155,92 +155,86 @@ impl Smolbar {
         });
 
         /* listen for cont and stop */
-        let blocks_c = self.blocks.clone();
-        task::spawn(async move {
-            loop {
-                match self.cont_stop_recv.recv().await.unwrap() {
-                    ContOrStop::Cont => {
-                        /* reload configuration */
-                        trace!("bar received cont");
-                        info!("reloading config");
+        loop {
+            match self.cont_stop_recv.recv().await.unwrap() {
+                ContOrStop::Cont => {
+                    /* reload configuration */
+                    trace!("bar received cont");
+                    info!("reloading config");
 
-                        // read configuration
-                        match Config::read_from_path(self.config.path.clone()) {
-                            Ok(config) => {
-                                self.config = config;
+                    // read configuration
+                    match Config::read_from_path(self.config.path.clone()) {
+                        Ok(config) => {
+                            self.config = config;
 
-                                {
-                                    // stop all blocks
-                                    let mut guard = blocks_c.lock().await;
-                                    let blocks = guard.take().unwrap();
-                                    for block in blocks {
-                                        block.stop().await;
-                                    }
-
-                                    // after taking, put back Some before releasing the guard
-                                    *guard =
-                                        Some(Vec::with_capacity(self.config.toml.blocks.len()));
-
-                                    trace!("cont: stopped all blocks");
+                            {
+                                // stop all blocks
+                                let mut guard = self.blocks.lock().await;
+                                let blocks = guard.take().unwrap();
+                                for block in blocks {
+                                    block.stop().await;
                                 }
 
-                                // add new blocks
-                                for block in self.config.toml.blocks {
-                                    Self::push_block(
-                                        &blocks_c,
-                                        self.refresh_send.clone(),
-                                        self.config.command_dir.clone(),
-                                        block,
-                                        self.config.toml.body.clone(),
-                                    )
-                                    .await
-                                    .unwrap();
-                                }
+                                // after taking, put back Some before releasing the guard
+                                *guard = Some(Vec::with_capacity(self.config.toml.blocks.len()));
 
-                                trace!("done reloading");
+                                trace!("cont: stopped all blocks");
                             }
 
-                            Err(error) => {
-                                error!(
-                                    "reading config from '{}' failed: {}",
-                                    self.config.path.display(),
-                                    error
-                                );
-                                info!("keeping current configuration");
+                            // add new blocks
+                            for block in self.config.toml.blocks {
+                                Self::push_block(
+                                    &self.blocks,
+                                    self.refresh_send.clone(),
+                                    self.config.command_dir.clone(),
+                                    block,
+                                    self.config.toml.body.clone(),
+                                )
+                                .await
+                                .unwrap();
                             }
-                        }
-                    }
 
-                    ContOrStop::Stop => {
-                        /* we received stop signal */
-                        trace!("bar received stop");
-
-                        // stop each block. we do this first because blocks expect
-                        // self.refresh_recv to be alive.
-                        let mut guard = self.blocks.lock().await;
-                        let blocks = guard.take().unwrap();
-                        for block in blocks {
-                            block.stop().await;
+                            trace!("done reloading");
                         }
 
-                        trace!("stop: stopped all blocks");
-
-                        // tell `refresh` to halt, now that all blocks are dropped
-                        trace!("stop: sending halt to refresh loop");
-                        self.refresh_send.send(false).await.unwrap();
-                        trace!("stop: waiting for refresh loop to halt");
-                        refresh.await.unwrap();
-
-                        // tell the senders attached to cont/stop recv to halt
-                        self.cont_stop_send_halt.send(()).unwrap();
-
-                        break;
+                        Err(error) => {
+                            error!(
+                                "reading config from '{}' failed: {}",
+                                self.config.path.display(),
+                                error
+                            );
+                            info!("keeping current configuration");
+                        }
                     }
                 }
+
+                ContOrStop::Stop => {
+                    /* we received stop signal */
+                    trace!("bar received stop");
+
+                    // stop each block. we do this first because blocks expect
+                    // self.refresh_recv to be alive.
+                    let mut guard = self.blocks.lock().await;
+                    let blocks = guard.take().unwrap();
+                    for block in blocks {
+                        block.stop().await;
+                    }
+
+                    trace!("stop: stopped all blocks");
+
+                    // tell `refresh` to halt, now that all blocks are dropped
+                    trace!("stop: sending halt to refresh loop");
+                    self.refresh_send.send(false).await.unwrap();
+                    trace!("stop: waiting for refresh loop to halt");
+                    refresh.await.unwrap();
+
+                    // tell the senders attached to cont/stop recv to halt
+                    self.cont_stop_send_halt.send(()).unwrap();
+
+                    break;
+                }
             }
-        })
-        .await
-        .unwrap();
+        }
 
         Ok(())
     }

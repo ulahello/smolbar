@@ -60,7 +60,6 @@ impl Default for Header {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[must_use]
 pub struct Body {
-    // TODO: do i have to copy-paste this attribute
     /// "The text that will be displayed. If missing, the block will be skipped."
     #[serde(skip_serializing_if = "Option::is_none")]
     pub full_text: Option<String>,

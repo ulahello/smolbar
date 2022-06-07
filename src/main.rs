@@ -15,8 +15,6 @@ use smolbar::logger;
 use smolbar::protocol::Header;
 use smolbar::Error;
 
-// TODO: full documentation
-
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
 struct Args {

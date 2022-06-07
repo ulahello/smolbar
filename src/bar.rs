@@ -1,3 +1,5 @@
+//! Defines a runtime bar.
+
 use log::{error, info, trace};
 use serde_json::ser;
 use tokio::sync::{broadcast, mpsc, Mutex};
@@ -12,6 +14,7 @@ use crate::config::{Config, TomlBlock};
 use crate::protocol::Body;
 use crate::Error;
 
+/// Configured bar at runtime.
 pub struct Smolbar {
     config: Config,
     blocks: Arc<Mutex<Option<Vec<Block>>>>,
@@ -27,6 +30,12 @@ pub struct Smolbar {
 }
 
 impl Smolbar {
+    /// Constructs a new, inactive [`Smolbar`], with the given configuration.
+    ///
+    /// When [run](Self::run), `cont_stop_recv` will listen for [`ContOrStop`]
+    /// messages. The caller should listen for continue and stop signals and
+    /// send either [`Cont`](ContOrStop::Cont) or [`Stop`](ContOrStop::Stop)
+    /// accordingly.
     pub async fn new(
         config: Config,
         cont_stop_recv: mpsc::Receiver<ContOrStop>,
@@ -62,6 +71,11 @@ impl Smolbar {
         bar
     }
 
+    /// Send the configured [`Header`](crate::protocol::Header) through standard output.
+    ///
+    /// # Errors
+    ///
+    /// Writing to standard output may fail.
     pub fn init(&self) -> Result<(), Error> {
         ser::to_writer(stdout(), &self.config.toml.header)?;
         write!(stdout(), "\n[")?;
@@ -71,6 +85,7 @@ impl Smolbar {
         Ok(())
     }
 
+    /// Activate and run the bar until completion.
     pub async fn run(mut self) -> Result<(), Error> {
         /* listen for refresh */
         let blocks_c = self.blocks.clone();
@@ -265,8 +280,15 @@ impl Smolbar {
     }
 }
 
+/// Either a continue or stop signal.
+///
+/// See [`Smolbar::new`] for more details on how this is used.
 #[derive(Debug, Clone, Copy)]
 pub enum ContOrStop {
+    /// Continue signal (see
+    /// [`Header::cont_signal`](crate::protocol::Header::cont_signal))
     Cont,
+    /// Stop signal (see
+    /// [`Header::stop_signal`](crate::protocol::Header::stop_signal))
     Stop,
 }

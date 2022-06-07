@@ -1,9 +1,12 @@
 use std::fmt::{self, Display};
 use std::io;
 
+/// Fatal errors that can occur at runtime.
 #[derive(Debug)]
 pub enum Error {
+    /// Wrapper around [`std::io::Error`]
     Io(io::Error),
+    /// No configuration path was found
     NoConfig,
 }
 

@@ -1,3 +1,5 @@
+//! Defines a runtime block.
+
 use log::error;
 use tokio::select;
 use tokio::signal::unix::{signal, SignalKind};
@@ -14,6 +16,10 @@ use std::time::Duration;
 use crate::config::TomlBlock;
 use crate::protocol::Body;
 
+// TODO: is it bad that blocks use std mutex but bar uses tokio mutex?
+
+/// Configured block at runtime, which communicates to a parent
+/// [bar](crate::bar::Smolbar).
 #[derive(Debug)]
 #[must_use]
 pub struct Block {
@@ -34,6 +40,10 @@ pub struct Block {
 }
 
 impl Block {
+    // TODO: Smolbar refresh loop is private
+    /// Initializes a new [`Block`].
+    ///
+    /// `bar_refresh` is connected to a `Smolbar`'s refresh loop.
     #[allow(clippy::items_after_statements)]
     pub fn new(
         toml: TomlBlock,
@@ -302,10 +312,13 @@ impl Block {
         }
     }
 
+    // TODO: this gives mutable access to the body
+    /// Lock the body and return a guard to it.
     pub fn read(&self) -> MutexGuard<Body> {
         self.body.lock().unwrap()
     }
 
+    /// Gracefully halt the block, consuming it.
     pub async fn stop(self) {
         // halt interval and signal tasks
         task::spawn(async move { self.interval.0.send(()).await.unwrap() });

@@ -180,8 +180,11 @@ impl Default for Body {
 #[serde(rename_all = "snake_case")]
 #[must_use]
 pub enum Align {
+    /// Left alignment
     Left,
+    /// Right alignment
     Right,
+    /// Center alignment
     Center,
 }
 
@@ -203,7 +206,9 @@ impl FromStr for Align {
 #[serde(rename_all = "snake_case")]
 #[must_use]
 pub enum Markup {
+    /// Use [Pango markup](https://docs.gtk.org/Pango/pango_markup.html)
     Pango,
+    /// No markup, plain text
     None,
 }
 

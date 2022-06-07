@@ -1,8 +1,10 @@
+//! `smolbar`'s [log] implementation.
+
 use log::{Level, LevelFilter, Log, Metadata, Record, SetLoggerError};
 
 static LOGGER: Logger = Logger;
 
-pub struct Logger;
+struct Logger;
 
 impl Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
@@ -26,6 +28,11 @@ impl Log for Logger {
     fn flush(&self) {}
 }
 
+/// Initialize logging.
+///
+/// # Errors
+///
+/// If logging has already been initialized, this returns [SetLoggerError].
 pub fn init(level: LevelFilter) -> Result<(), SetLoggerError> {
     log::set_logger(&LOGGER).map(|()| log::set_max_level(level))
 }

@@ -1,3 +1,5 @@
+//! Configuration structures for the bar and its blocks.
+
 use log::trace;
 use serde_derive::{Deserialize, Serialize};
 
@@ -7,35 +9,52 @@ use std::path::PathBuf;
 use crate::protocol::{Body, Header};
 use crate::Error;
 
+/// Bar configuration, directly deserialized.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TomlBar {
-    pub command_dir: Option<String>,
+    command_dir: Option<String>,
+    /// Configured [`Header`]
     pub header: Header,
+    /// [`Body`] configured at `global` scope
     #[serde(flatten)]
     pub body: Body,
+    /// The bar's configured [blocks](TomlBlock)
     #[serde(rename = "block")]
     pub blocks: Vec<TomlBlock>,
 }
 
+/// Block configuration, directly deserialized.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TomlBlock {
+    /// Command to execute to configure body at `immediate` scope
     pub command: String,
+    /// String prefixing `full_text`
     pub prefix: Option<String>,
+    /// String appended to `full_text`
     pub postfix: Option<String>,
+    /// Interval, in seconds, at which to refresh the block
     pub interval: Option<u32>,
+    /// Operating system signal to refresh the block when received
     pub signal: Option<i32>,
 
+    /// Body configured at `local` scope
     #[serde(flatten)]
     pub body: Body,
 }
 
+/// Convenience struct for easy access to all configuration options.
 pub struct Config {
+    /// Path of the TOML configuration file
     pub path: PathBuf,
+    /// Path to execute block commands in
     pub command_dir: PathBuf,
+    /// Bar's direct TOML configuration
     pub toml: TomlBar,
 }
 
 impl Config {
+    /// Read a TOML configuration from the given `path`, and return it
+    /// as a [`Config`].
     pub fn read_from_path(path: PathBuf) -> Result<Config, Error> {
         let toml: TomlBar = toml::from_str(&fs::read_to_string(&path)?)?;
 

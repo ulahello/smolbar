@@ -32,7 +32,7 @@ impl Log for Logger {
 ///
 /// # Errors
 ///
-/// If logging has already been initialized, this returns [SetLoggerError].
+/// If logging has already been initialized, this returns [`SetLoggerError`].
 pub fn init(level: LevelFilter) -> Result<(), SetLoggerError> {
     log::set_logger(&LOGGER).map(|()| log::set_max_level(level))
 }

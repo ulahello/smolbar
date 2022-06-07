@@ -55,6 +55,11 @@ pub struct Config {
 impl Config {
     /// Read a TOML configuration from the given `path`, and return it
     /// as a [`Config`].
+    ///
+    /// # Errors
+    ///
+    /// - Reading from `path` may fail
+    /// - `path` contents may be invalid TOML
     pub fn read_from_path(path: PathBuf) -> Result<Config, Error> {
         let toml: TomlBar = toml::from_str(&fs::read_to_string(&path)?)?;
 

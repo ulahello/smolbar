@@ -71,7 +71,8 @@ impl Smolbar {
         bar
     }
 
-    /// Send the configured [`Header`](crate::protocol::Header) through standard output.
+    /// Send the configured [`Header`](crate::protocol::Header) through standard
+    /// output.
     ///
     /// # Errors
     ///

@@ -86,7 +86,7 @@ impl Smolbar {
     }
 
     /// Activate and run the bar until completion.
-    pub async fn run(mut self) -> Result<(), Error> {
+    pub async fn run(mut self) {
         /* listen for refresh */
         let blocks_c = self.blocks.clone();
         let refresh = task::spawn(async move {
@@ -258,8 +258,6 @@ impl Smolbar {
                 }
             }
         }
-
-        Ok(())
     }
 
     async fn push_block(

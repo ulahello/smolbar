@@ -131,7 +131,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
 
     /* start printing and updating blocks */
     bar.init()?;
-    bar.run().await?;
+    bar.run().await;
 
     info!("shutting down");
 

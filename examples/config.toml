@@ -1,4 +1,5 @@
 command_dir = "blocks"
+separator_block_width = 16
 
 [header]
 stop_signal = 2
@@ -7,21 +8,21 @@ stop_signal = 2
 command = "./memory_mem.sh"
 prefix = "Mem "
 interval = 5
-color = "#8db6b2"
+color = "#7fbbb3"
 separator = false
 
 [[block]]
 command = "./memory_swap.sh"
 prefix = "Swap "
 interval = 5
-color = "#859e74"
+color = "#83c092"
 
 [[block]]
 command = "./load_average.sh"
 interval = 10
-color = "#e1605a"
+color = "#e67e80"
 
 [[block]]
 command = "./date.sh"
 interval = 1
-color = "#f7bc5d"
+color = "#ddbc7f"

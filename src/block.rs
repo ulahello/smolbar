@@ -16,8 +16,6 @@ use std::time::Duration;
 use crate::config::TomlBlock;
 use crate::protocol::Body;
 
-// TODO: is it bad that blocks use std mutex but bar uses tokio mutex?
-
 /// Configured block at runtime, which communicates to a parent
 /// [bar](crate::bar::Smolbar).
 #[derive(Debug)]

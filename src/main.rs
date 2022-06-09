@@ -1,6 +1,6 @@
 use clap::Parser;
 use dirs::config_dir;
-use log::{info, trace, LevelFilter};
+use log::{error, info, trace, LevelFilter};
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::{broadcast, mpsc};
 use tokio::{select, task};
@@ -35,7 +35,7 @@ async fn main() -> ExitCode {
     logger::init(LevelFilter::Trace).unwrap();
 
     if let Err(err) = try_main(Args::parse()).await {
-        eprintln!("fatal: {}", err);
+        error!("{}", err);
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS

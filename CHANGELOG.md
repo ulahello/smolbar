@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* fixed fatal errors not having timestamps
 
 ## [0.3.0] - 2022-06-08
 * added support for floating point intervals

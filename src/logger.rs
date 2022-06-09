@@ -2,9 +2,11 @@
 
 use log::{Level, LevelFilter, Log, Metadata, Record, SetLoggerError};
 
-static LOGGER: Logger = Logger;
+use std::time::Instant;
 
-struct Logger;
+struct Logger {
+    epoch: Instant,
+}
 
 impl Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
@@ -21,7 +23,12 @@ impl Log for Logger {
                 Level::Trace => "trace",
             };
 
-            eprintln!("{}: {}", level, record.args());
+            eprintln!(
+                "[{:.3}] {}: {}",
+                self.epoch.elapsed().as_secs_f32(),
+                level,
+                record.args()
+            );
         }
     }
 
@@ -34,5 +41,8 @@ impl Log for Logger {
 ///
 /// If logging has already been initialized, this returns [`SetLoggerError`].
 pub fn init(level: LevelFilter) -> Result<(), SetLoggerError> {
-    log::set_logger(&LOGGER).map(|()| log::set_max_level(level))
+    log::set_boxed_logger(Box::new(Logger {
+        epoch: Instant::now(),
+    }))
+    .map(|()| log::set_max_level(level))
 }

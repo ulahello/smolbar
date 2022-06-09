@@ -1,8 +1,10 @@
 # changelog
 
 ## [unreleased]
-* fixed incorrect documentation in README
 * added crate documentation
+* added timestamps to logs
+* fixed slow shutdown with slow command
+* fixed incorrect documentation in README
 
 ## [0.1.1] - 2022-06-04
 * fixed panic when receiving continue signal and stop signal simultaneously

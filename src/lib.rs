@@ -1,4 +1,5 @@
 #![warn(missing_docs, clippy::pedantic)]
+#![feature(duration_checked_float)]
 
 //! `smolbar` is a status command for sway.
 

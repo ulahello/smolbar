@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* added support for floating point intervals
 
 ## [0.2.0] - 2022-06-08
 * added crate documentation

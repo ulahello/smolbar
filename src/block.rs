@@ -248,9 +248,9 @@ impl Block {
         let interval = (
             interval_send,
             task::spawn(async move {
-                if let Some(timeout) = toml_interval {
-                    let timeout = Duration::from_secs(timeout.into());
-
+                if let Some(Ok(timeout)) =
+                    toml_interval.map(|secs| Duration::try_from_secs_f32(secs))
+                {
                     loop {
                         match time::timeout(timeout, interval_recv.recv()).await {
                             Ok(halt) => {

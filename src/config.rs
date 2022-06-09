@@ -33,7 +33,10 @@ pub struct TomlBlock {
     /// String appended to `full_text`
     pub postfix: Option<String>,
     /// Interval, in seconds, at which to refresh the block
-    pub interval: Option<u32>,
+    ///
+    /// If the interval is negative, overflows
+    /// [`Duration`](std::time::Duration), or is not finite, it is ignored.
+    pub interval: Option<f32>,
     /// Operating system signal to refresh the block when received
     pub signal: Option<i32>,
 

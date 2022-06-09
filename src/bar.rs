@@ -192,17 +192,17 @@ impl Smolbar {
                             self.config = config;
 
                             {
-                                // stop all blocks
+                                // halt all blocks
                                 let mut guard = self.blocks.lock().await;
                                 let blocks = guard.take().unwrap();
                                 for block in blocks {
-                                    block.stop().await;
+                                    block.halt().await;
                                 }
 
                                 // after taking, put back Some before releasing the guard
                                 *guard = Some(Vec::with_capacity(self.config.toml.blocks.len()));
 
-                                trace!("cont: stopped all blocks");
+                                trace!("cont: halted all blocks");
                             }
 
                             // add new blocks
@@ -236,15 +236,15 @@ impl Smolbar {
                     /* we received stop signal */
                     trace!("bar received stop");
 
-                    // stop each block. we do this first because blocks expect
+                    // halt each block. we do this first because blocks expect
                     // self.refresh_recv to be alive.
                     let mut guard = self.blocks.lock().await;
                     let blocks = guard.take().unwrap();
                     for block in blocks {
-                        block.stop().await;
+                        block.halt().await;
                     }
 
-                    trace!("stop: stopped all blocks");
+                    trace!("stop: halted all blocks");
 
                     // tell `refresh` to halt, now that all blocks are dropped
                     trace!("stop: sending halt to refresh loop");

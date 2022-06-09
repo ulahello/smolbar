@@ -325,7 +325,7 @@ impl Block {
     }
 
     /// Gracefully halt the block, consuming it.
-    pub async fn stop(self) {
+    pub async fn halt(self) {
         // halt interval and signal tasks
         task::spawn(async move { self.interval.0.send(()).await.unwrap() });
         task::spawn(async move { self.signal.0.send(()).await.unwrap() });

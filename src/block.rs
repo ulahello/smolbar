@@ -281,10 +281,13 @@ impl Block {
                             select!(
                                 halt = sig_recv.recv() => {
                                     halt.unwrap();
+                                    // we received halt msg
                                     break;
                                 }
+
                                 sig = stream.recv() => {
                                     sig.unwrap();
+                                    // refresh the body on receiving signal
                                     cmd_send_c.send(true).await.unwrap();
                                 }
                             );

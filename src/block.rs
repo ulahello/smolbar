@@ -1,6 +1,6 @@
 //! Defines a runtime block.
 
-use log::error;
+use log::{error, warn};
 use tokio::select;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::mpsc;
@@ -15,6 +15,8 @@ use std::time::Duration;
 
 use crate::config::TomlBlock;
 use crate::protocol::Body;
+
+// TODO: better way for both devs and users to understand which block is being referred to
 
 /// Configured block at runtime, which communicates to a parent
 /// [bar](crate::bar::Smolbar).
@@ -57,11 +59,12 @@ impl Block {
 
         /* listen for body refresh msgs and fulfill them */
         let body_c = body.clone();
+        let toml_command = toml.command.clone();
         let cmd = (
             cmd_send.clone(),
             task::spawn(async move {
                 while cmd_recv.recv().await.unwrap() {
-                    let mut command = Command::new(&toml.command);
+                    let mut command = Command::new(&toml_command);
                     // TODO: this is breaking PATH
                     command.current_dir(&cmd_dir);
 
@@ -227,13 +230,13 @@ impl Block {
                                     } else {
                                         error!(
                                             "block command `{}` produced invalid utf8",
-                                            toml.command
+                                            toml_command
                                         );
                                     }
                                 }
 
                                 Err(error) => {
-                                    error!("block command `{}`: {}", toml.command, error);
+                                    error!("block command `{}`: {}", toml_command, error);
                                 }
                             }
                         }
@@ -248,24 +251,36 @@ impl Block {
         let interval = (
             interval_send,
             task::spawn(async move {
-                if let Some(Ok(timeout)) = toml_interval.map(Duration::try_from_secs_f32) {
-                    loop {
-                        match time::timeout(timeout, interval_recv.recv()).await {
-                            Ok(halt) => {
-                                halt.unwrap();
-                                // we received halt msg
-                                break;
-                            }
-                            Err(_) => {
-                                // receiving halt msg timed out, so we refresh
-                                // the body. this creates the behavior of
-                                // refreshing the body at a specific interval
-                                // until halting
-                                cmd_send_c.send(true).await.unwrap();
+                let mut yes_actually_exit = false;
+
+                match toml_interval.map(Duration::try_from_secs_f32) {
+                    Some(Ok(timeout)) => {
+                        loop {
+                            match time::timeout(timeout, interval_recv.recv()).await {
+                                Ok(halt) => {
+                                    halt.unwrap();
+                                    // we received halt msg
+                                    yes_actually_exit = true;
+                                    break;
+                                }
+                                Err(_) => {
+                                    // receiving halt msg timed out, so we refresh
+                                    // the body. this creates the behavior of
+                                    // refreshing the body at a specific interval
+                                    // until halting
+                                    cmd_send_c.send(true).await.unwrap();
+                                }
                             }
                         }
                     }
-                } else {
+                    Some(Err(error)) => warn!(
+                        "block with command `{}` has invalid timeout: {}",
+                        toml.command, error
+                    ),
+                    _ => (),
+                }
+
+                if !yes_actually_exit {
                     // wait for halt msg
                     interval_recv.recv().await.unwrap();
                 }

@@ -34,19 +34,19 @@ struct Args {
 async fn main() -> ExitCode {
     // start smolbar with logging enabled
     logger::set_level(LevelFilter::Trace);
-    let result = try_main(Args::parse()).await;
+    let exit_code = if let Err(err) = try_main(Args::parse()).await {
+        error!("{}", err);
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    };
 
     // disable logging before main returns. mio makes a trace log (from signal
     // handling) when the program ends, so this hides it
     logger::set_level(LevelFilter::Off);
 
-    // return the appropriate exit code
-    if let Err(err) = result {
-        error!("{}", err);
-        ExitCode::FAILURE
-    } else {
-        ExitCode::SUCCESS
-    }
+    // return with the appropriate exit code
+    exit_code
 }
 
 async fn try_main(args: Args) -> Result<(), Error> {

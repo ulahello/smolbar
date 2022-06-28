@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* fixed missing error message for fatal errors
 * feat: log command_dir
 * improved `--config` help message
 

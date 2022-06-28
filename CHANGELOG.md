@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* changed command_dir log level to info
 
 ## [0.3.2] - 2022-06-28
 * fixed missing error message for fatal errors

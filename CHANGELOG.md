@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.3.2] - 2022-06-28
 * fixed missing error message for fatal errors
 * feat: log command_dir
 * improved `--config` help message

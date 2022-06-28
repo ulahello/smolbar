@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* feat: log command_dir
 * improved `--config` help message
 
 ## [0.3.1] - 2022-06-28

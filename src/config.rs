@@ -81,6 +81,8 @@ impl Config {
         }
         command_dir = command_dir.canonicalize()?;
 
+        trace!("set command_dir to '{}'", command_dir.display());
+
         trace!(
             "read {} block(s) from '{}'",
             toml.blocks.len(),

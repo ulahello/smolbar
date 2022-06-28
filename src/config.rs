@@ -79,6 +79,7 @@ impl Config {
             // path parent
             command_dir.push(dir);
         }
+        command_dir = command_dir.canonicalize()?;
 
         trace!(
             "read {} block(s) from '{}'",

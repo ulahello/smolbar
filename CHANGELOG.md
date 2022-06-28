@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.3.1] - 2022-06-28
 * fixed incorrect command_dir
   * previously the configuration path wasn't canonicalized
 * fixed trace log from dependency showing on program end

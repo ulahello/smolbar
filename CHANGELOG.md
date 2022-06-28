@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* improved `--config` help message
 
 ## [0.3.1] - 2022-06-28
 * fixed incorrect command_dir

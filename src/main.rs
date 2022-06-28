@@ -22,7 +22,7 @@ struct Args {
     ///
     /// If this isn't specified, it falls back to "smolbar/config.toml" in the
     /// current user's config directory.
-    #[clap(short, long)]
+    #[clap(short, long, value_name = "PATH")]
     config: Option<PathBuf>,
 
     /// Print license information

@@ -1,6 +1,6 @@
 //! `smolbar`'s [log] implementation.
 
-use log::{Level, LevelFilter, Log, Metadata, Record, SetLoggerError};
+use log::{Level, LevelFilter, Log, Metadata, Record};
 
 use std::time::Instant;
 
@@ -35,14 +35,12 @@ impl Log for Logger {
     fn flush(&self) {}
 }
 
-/// Initialize logging.
+/// Set the level of logging.
 ///
-/// # Errors
-///
-/// If logging has already been initialized, this returns [`SetLoggerError`].
-pub fn init(level: LevelFilter) -> Result<(), SetLoggerError> {
-    log::set_boxed_logger(Box::new(Logger {
+/// This also initializes logging if it has not been already.
+pub fn set_level(level: LevelFilter) {
+    let _ = log::set_boxed_logger(Box::new(Logger {
         epoch: Instant::now(),
-    }))
-    .map(|()| log::set_max_level(level))
+    }));
+    log::set_max_level(level);
 }

@@ -32,9 +32,16 @@ struct Args {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
-    logger::init(LevelFilter::Trace).unwrap();
+    // start smolbar with logging enabled
+    logger::set_level(LevelFilter::Trace);
+    let result = try_main(Args::parse()).await;
 
-    if let Err(err) = try_main(Args::parse()).await {
+    // disable logging before main returns. mio makes a trace log (from signal
+    // handling) when the program ends, so this hides it
+    logger::set_level(LevelFilter::Off);
+
+    // return the appropriate exit code
+    if let Err(err) = result {
         error!("{}", err);
         ExitCode::FAILURE
     } else {

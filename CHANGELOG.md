@@ -3,6 +3,7 @@
 ## [unreleased]
 * fixed incorrect command_dir
   * previously the configuration path wasn't canonicalized
+* fixed trace log from dependency showing on program end
 * fixed fatal errors not having timestamps
 
 ## [0.3.0] - 2022-06-08

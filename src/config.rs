@@ -61,9 +61,14 @@ impl Config {
     ///
     /// # Errors
     ///
+    /// - Canonicalizing `path` may fail
     /// - Reading from `path` may fail
     /// - `path` contents may be invalid TOML
     pub fn read_from_path(path: PathBuf) -> Result<Config, Error> {
+        // canonicalize path before doing anything else. this is important for
+        // getting `command_dir`, which is `path`'s parent
+        let path = path.canonicalize()?;
+
         let toml: TomlBar = toml::from_str(&fs::read_to_string(&path)?)?;
 
         // command_dir is either the config's parent path or whatever is

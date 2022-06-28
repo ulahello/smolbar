@@ -36,6 +36,7 @@ impl Smolbar {
     /// messages. The caller should listen for continue and stop signals and
     /// send either [`Cont`](ContOrStop::Cont) or [`Stop`](ContOrStop::Stop)
     /// accordingly.
+    #[allow(clippy::missing_panics_doc)]
     pub async fn new(
         config: Config,
         cont_stop_recv: mpsc::Receiver<ContOrStop>,
@@ -87,6 +88,7 @@ impl Smolbar {
     }
 
     /// Activate and run the bar until completion.
+    #[allow(clippy::missing_panics_doc)]
     pub async fn run(mut self) {
         /* listen for refresh */
         let blocks_c = self.blocks.clone();

@@ -44,7 +44,7 @@ impl Block {
     /// Initializes a new [`Block`].
     ///
     /// `bar_refresh` is connected to a `Smolbar`'s refresh loop.
-    #[allow(clippy::items_after_statements)]
+    #[allow(clippy::missing_panics_doc, clippy::items_after_statements)]
     pub fn new(
         toml: TomlBlock,
         global: Body,
@@ -333,11 +333,13 @@ impl Block {
 
     // TODO: this gives mutable access to the body
     /// Lock the body and return a guard to it.
+    #[allow(clippy::missing_panics_doc)]
     pub fn read(&self) -> MutexGuard<Body> {
         self.body.lock().unwrap()
     }
 
     /// Gracefully halt the block, consuming it.
+    #[allow(clippy::missing_panics_doc)]
     pub async fn halt(self) {
         // halt interval and signal tasks
         task::spawn(async move { self.interval.0.send(()).await.unwrap() });

@@ -109,7 +109,6 @@ impl Block {
         task::spawn(async move {
             while cmd_recv.recv().await.unwrap() {
                 let mut command = Command::new(&toml.command);
-                // TODO: this is breaking PATH
                 command.current_dir(&cmd_dir);
 
                 // run command and capture output for Body

@@ -4,7 +4,7 @@ use log::trace;
 use serde_derive::{Deserialize, Serialize};
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::protocol::{Body, Header};
 use crate::Error;
@@ -64,7 +64,7 @@ impl Config {
     /// - Canonicalizing `path` may fail
     /// - Reading from `path` may fail
     /// - `path` contents may be invalid TOML
-    pub fn read_from_path(path: PathBuf) -> Result<Config, Error> {
+    pub fn read_from_path(path: &Path) -> Result<Config, Error> {
         // canonicalize path before doing anything else. this is important for
         // getting `command_dir`, which is `path`'s parent
         let path = path.canonicalize()?;

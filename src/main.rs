@@ -66,7 +66,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
     info!("set config path to '{}'", path.display());
 
     /* load configuration */
-    let config = Config::read_from_path(path)?;
+    let config = Config::read_from_path(&path)?;
 
     /* prepare to send continue and stop msgs to bar */
     // NOTE: signals may be forbidden, so a channel may not always be possible (hence option)

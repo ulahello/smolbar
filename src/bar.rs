@@ -187,7 +187,7 @@ impl Smolbar {
                     info!("reloading config");
 
                     // read configuration
-                    match Config::read_from_path(self.config.path.clone()) {
+                    match Config::read_from_path(&self.config.path) {
                         Ok(config) => {
                             self.config = config;
 

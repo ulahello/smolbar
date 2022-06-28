@@ -20,8 +20,8 @@ use smolbar::Error;
 struct Args {
     /// Path to the configuration file
     ///
-    /// If this isn't specified, it falls back to "smolbar/config.toml" in your
-    /// config directory.
+    /// If this isn't specified, it falls back to "smolbar/config.toml" in the
+    /// current user's config directory.
     #[clap(short, long)]
     config: Option<PathBuf>,
 

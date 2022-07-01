@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(clippy::pedantic)]
 
 use clap::Parser;
 use dirs::config_dir;

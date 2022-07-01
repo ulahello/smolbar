@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use clap::Parser;
 use dirs::config_dir;
 use log::{error, info, trace, LevelFilter};

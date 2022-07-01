@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::pedantic)]
 #![feature(duration_checked_float)]
 

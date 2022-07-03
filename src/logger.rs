@@ -1,3 +1,6 @@
+// copyright (C) 2022  Ula Shipman <ula.hello@mailbox.org>
+// licensed under GPL-3.0-or-later
+
 //! `smolbar`'s [log] implementation.
 
 use log::{Level, LevelFilter, Log, Metadata, Record};

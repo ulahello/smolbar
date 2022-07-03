@@ -1,3 +1,6 @@
+// copyright (C) 2022  Ula Shipman <ula.hello@mailbox.org>
+// licensed under GPL-3.0-or-later
+
 //! Configuration structures for the bar and its blocks.
 
 use log::{info, trace};

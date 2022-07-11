@@ -82,7 +82,6 @@ async fn try_main(args: Args) -> Result<(), Error> {
     let config = Config::read_from_path(&path)?;
 
     /* prepare to send continue and stop msgs to bar */
-    // NOTE: signals may be forbidden, so a channel may not always be possible (hence option)
     let (cont_stop_send, cont_stop_recv) = mpsc::channel(1);
 
     let (sig_halt_send, _) = broadcast::channel(1);
@@ -110,7 +109,6 @@ async fn try_main(args: Args) -> Result<(), Error> {
         let sig = SignalKind::from_raw(sig);
 
         if let Ok(mut stream) = signal(sig) {
-            // stream is ok, so make channel
             trace!("{} signal {} is valid, listening", name, sig.as_raw_value());
 
             let mut halt_recv = sig_halt_send.subscribe();
@@ -118,6 +116,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
 
             task::spawn(async move {
                 loop {
+                    // halt may arrive while waiting for signal
                     select!(
                         stream = stream.recv() => {
                             stream.unwrap();
@@ -127,7 +126,6 @@ async fn try_main(args: Args) -> Result<(), Error> {
                         halt = halt_recv.recv() => {
                             halt.unwrap();
 
-                            // halt
                             trace!("{} signal listener shutting down", name);
                             break;
                         }

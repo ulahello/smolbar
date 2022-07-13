@@ -256,7 +256,8 @@ impl Block {
                                             &global.markup,
                                         );
 
-                                        // full text is prefixed by `prefix`, postfixed by `postfix` field in toml
+                                        // full text is prefixed by `prefix`,
+                                        // postfixed by `postfix` field in toml
                                         if let Some(ref prefix) = toml.prefix {
                                             if let Some(full_text) = &body.full_text {
                                                 let mut prefix = prefix.to_string();

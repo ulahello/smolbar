@@ -47,7 +47,8 @@ impl Block {
     // TODO: Smolbar refresh loop is private
     /// Initializes a new [`Block`].
     ///
-    /// `bar_refresh` is connected to a `Smolbar`'s refresh loop.
+    /// `bar_refresh` is connected to a [`Smolbar`](crate::bar::Smolbar)'s
+    /// refresh loop.
     #[allow(clippy::missing_panics_doc)]
     pub fn new(
         toml: TomlBlock,

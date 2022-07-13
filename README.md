@@ -17,7 +17,7 @@ for an example of a configuration, see the [examples](./examples).
 ## header
 
 the header first sent to sway can be configured in the `header` table.
-it inherets all keys from the `Header` JSON object defined in `swaybar-protocol(5)`.
+it inherets all keys from the `Header` JSON object defined in `swaybar-protocol(7)`.
 
 ## blocks
 
@@ -26,7 +26,7 @@ each scope has a level of control over the `Body`s of blocks: `immediate` has th
 
 ### global
 
-`global` inherets all keys from the `Body` JSON object defined in `swaybar-protocol(5)`.
+`global` inherets all keys from the `Body` JSON object defined in `swaybar-protocol(7)`.
 
 | key         | description                                  |
 |-------------|----------------------------------------------|
@@ -36,7 +36,7 @@ each scope has a level of control over the `Body`s of blocks: `immediate` has th
 
 all local blocks are tables in the table array `block`.
 
-`local` inherets all keys from the `Body` JSON object defined in `swaybar-protocol(5)`.
+`local` inherets all keys from the `Body` JSON object defined in `swaybar-protocol(7)`.
 
 | key      | description                                         |
 |----------|-----------------------------------------------------|
@@ -48,7 +48,7 @@ all local blocks are tables in the table array `block`.
 
 ### immediate
 
-each line of `command(local)`'s standard output is parsed in order as a field of the `Body` JSON object defined in `swaybar-protocol(5)`.
+each line of `command(local)`'s standard output is parsed in order as a field of the `Body` JSON object defined in `swaybar-protocol(7)`.
 
 for example, suppose the following script was a block's command:
 
@@ -65,7 +65,7 @@ echo "#ff0000"
 
 ## hot swapping
 
-`smolbar` responds to `cont_signal` (see `swaybar-protocol(5)`) by reloading its configuration.
+`smolbar` responds to `cont_signal` (see `swaybar-protocol(7)`) by reloading its configuration.
 
 this means that by default, sending `smolbar`'s process `SIGCONT` will cause it to hot swap its config.
 
@@ -95,4 +95,4 @@ $ pkill --signal 10 smolbar
 
 the header, fundamentally, can't be reconfigured during runtime.
 
-this is because in `swaybar-protocol(5)`, it's only sent once, at the beginning of the status command's process.
+this is because in `swaybar-protocol(7)`, it's only sent once, at the beginning of the status command's process.

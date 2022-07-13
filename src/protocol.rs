@@ -5,6 +5,7 @@
 
 use libc::{SIGCONT, SIGSTOP};
 use serde_derive::{Deserialize, Serialize};
+
 use std::str::FromStr;
 
 /// Header object as defined in `swaybar-protocol(7)`.

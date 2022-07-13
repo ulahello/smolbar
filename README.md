@@ -62,3 +62,37 @@ echo "short info"
 # interpreted as `color`
 echo "#ff0000"
 ```
+
+## hot swapping
+
+`smolbar` responds to `cont_signal` (see `swaybar-protocol(5)`) by reloading its configuration.
+
+this means that by default, sending `smolbar`'s process `SIGCONT` will cause it to hot swap its config.
+
+```toml
+[header]
+# cont_signal is 18 (SIGCONT) by default
+```
+
+```console
+$ pkill -SIGCONT smolbar
+# causes smolbar to reload config
+```
+
+`cont_signal` is also configurable.
+
+```toml
+[header]
+cont_signal = 10
+```
+
+```console
+$ pkill --signal 10 smolbar
+# causes smolbar to reload config
+```
+
+### note
+
+the header, fundamentally, can't be reconfigured during runtime.
+
+this is because in `swaybar-protocol(5)`, it's only sent once, at the beginning of the status command's process.

@@ -184,6 +184,7 @@ impl Smolbar {
         });
 
         /* listen for cont and stop */
+        // TODO: header isn't (nor can be) resent when reloading
         loop {
             match self.cont_stop_recv.recv().await.unwrap() {
                 ContOrStop::Cont => {

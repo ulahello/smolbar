@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* fixed block not updating if command fails
 * changed command_dir log level to info
 
 ## [0.3.2] - 2022-06-28

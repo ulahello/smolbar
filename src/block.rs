@@ -348,6 +348,7 @@ impl Block {
                         }
                     }
                 }
+
                 Some(Err(error)) => warn!("block {} has invalid timeout: {}", id, error),
                 _ => (),
             }

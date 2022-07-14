@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+* fix: improved interval precision
+  * uses deadline instead of duration, so time won't drift
 
 ## [0.4.0] - 2022-07-14
 * feat: make command optional

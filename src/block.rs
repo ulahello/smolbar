@@ -9,7 +9,7 @@ use tokio::signal;
 use tokio::signal::unix::SignalKind;
 use tokio::sync::mpsc;
 use tokio::task::{self, JoinHandle};
-use tokio::time;
+use tokio::time::{self, Instant};
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -319,11 +319,13 @@ impl Block {
     ) -> JoinHandle<()> {
         task::spawn(async move {
             let mut yes_actually_exit = false;
+            let mut deadline = Instant::now();
 
             match toml.interval.map(Duration::try_from_secs_f32) {
                 Some(Ok(timeout)) => {
                     loop {
-                        match time::timeout(timeout, interval_recv.recv()).await {
+                        deadline += timeout;
+                        match time::timeout_at(deadline, interval_recv.recv()).await {
                             Ok(halt) => {
                                 halt.unwrap();
                                 // we received halt msg

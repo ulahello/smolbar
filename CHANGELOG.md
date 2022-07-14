@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.4.0] - 2022-07-14
 * feat: make command optional
 * feat: refer to blocks with IDs instead of by command
 

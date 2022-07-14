@@ -324,7 +324,13 @@ impl Block {
             match toml.interval.map(Duration::try_from_secs_f32) {
                 Some(Ok(timeout)) => {
                     loop {
-                        deadline += timeout;
+                        // NOTE: if an iteration is faster than `timeout`,
+                        // deadline < Instant::now
+                        let now = Instant::now();
+                        while deadline < now {
+                            deadline += timeout;
+                        }
+
                         match time::timeout_at(deadline, interval_recv.recv()).await {
                             Ok(halt) => {
                                 halt.unwrap();

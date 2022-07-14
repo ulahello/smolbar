@@ -29,9 +29,8 @@ pub struct TomlBar {
 /// Block configuration, directly deserialized.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TomlBlock {
-    // TODO: make this optional
     /// Command to execute to configure body at `immediate` scope
-    pub command: String,
+    pub command: Option<String>,
     /// String prefixing `full_text`
     pub prefix: Option<String>,
     /// String appended to `full_text`

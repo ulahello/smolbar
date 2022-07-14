@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+* feat: make command optional
+* feat: refer to blocks with IDs instead of by command
 
 ## [0.3.3] - 2022-07-13
 * fixed block not updating if command fails

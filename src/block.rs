@@ -20,8 +20,6 @@ use std::time::Duration;
 use crate::config::TomlBlock;
 use crate::protocol::Body;
 
-// TODO: better way for both devs and users to understand which block is being referred to
-
 /// Configured block at runtime, which communicates to a parent
 /// [bar](crate::bar::Smolbar).
 #[derive(Debug)]
@@ -55,6 +53,7 @@ impl Block {
         global: Body,
         bar_refresh: mpsc::Sender<bool>,
         cmd_dir: PathBuf,
+        id: usize,
     ) -> Self {
         let toml = Arc::new(toml);
         let body = Arc::new(Mutex::new(Body::new()));
@@ -73,13 +72,14 @@ impl Block {
                 Arc::clone(&body),
                 cmd_recv,
                 cmd_dir,
+                id,
             ),
         );
 
         /* refresh on an interval */
         let interval = (
             interval_send,
-            Self::task_interval(Arc::clone(&toml), interval_recv, cmd_send.clone()),
+            Self::task_interval(Arc::clone(&toml), interval_recv, cmd_send.clone(), id),
         );
 
         /* refresh on a signal */
@@ -109,6 +109,7 @@ impl Block {
         body: Arc<Mutex<Body>>,
         mut cmd_recv: mpsc::Receiver<bool>,
         cmd_dir: PathBuf,
+        id: usize,
     ) -> JoinHandle<()> {
         task::spawn(async move {
             while cmd_recv.recv().await.unwrap() {
@@ -133,13 +134,14 @@ impl Block {
                                 Some(utf8)
                             } else {
                                 error!(
-                                    "block command `{}` produced invalid utf8",
+                                    "block {}: command `{}` produced invalid utf8",
+                                    id,
                                     toml.command
                                 );
                                 None
                             }
                             Err(error) => {
-                                error!("block command `{}`: {}", toml.command, error);
+                                error!("block {}: command `{}`: {}", id, toml.command, error);
                                 None
                             }
                         }.unwrap_or_else(|| "".into());
@@ -302,6 +304,7 @@ impl Block {
         toml: Arc<TomlBlock>,
         mut interval_recv: mpsc::Receiver<()>,
         cmd_send: mpsc::Sender<bool>,
+        id: usize,
     ) -> JoinHandle<()> {
         task::spawn(async move {
             let mut yes_actually_exit = false;
@@ -326,10 +329,7 @@ impl Block {
                         }
                     }
                 }
-                Some(Err(error)) => warn!(
-                    "block with command `{}` has invalid timeout: {}",
-                    toml.command, error
-                ),
+                Some(Err(error)) => warn!("block {} has invalid timeout: {}", id, error),
                 _ => (),
             }
 

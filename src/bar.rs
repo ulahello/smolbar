@@ -68,8 +68,7 @@ impl Smolbar {
                 block.clone(),
                 bar.config.toml.body.clone(),
             )
-            .await
-            .unwrap();
+            .await;
         }
 
         bar
@@ -220,8 +219,7 @@ impl Smolbar {
                                     block,
                                     self.config.toml.body.clone(),
                                 )
-                                .await
-                                .unwrap();
+                                .await;
                             }
 
                             trace!("done reloading");
@@ -273,14 +271,13 @@ impl Smolbar {
         cmd_dir: PathBuf,
         block: TomlBlock,
         global: Body,
-    ) -> Option<()> {
+    ) {
         if let Some(vec) = &mut *blocks.lock().await {
-            trace!("pushed block with command `{}`", block.command);
-            vec.push(Block::new(block, global, refresh_send, cmd_dir));
-            Some(())
+            let id = vec.len() + 1;
+            trace!("pushed block {}", id);
+            vec.push(Block::new(block, global, refresh_send, cmd_dir, id));
         } else {
-            trace!("unable to push block with command `{}`", block.command);
-            None
+            unreachable!("blocks must not be pushed while the inner block vector is taken");
         }
     }
 }

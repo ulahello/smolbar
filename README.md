@@ -38,13 +38,13 @@ all local blocks are tables in the table array `block`.
 
 `local` inherets all keys from the `Body` JSON object defined in `swaybar-protocol(7)`.
 
-| key      | description                                         |
-|----------|-----------------------------------------------------|
-| command  | command to execute for `immediate` configuration    |
-| prefix   | string prefixing `full_text`                        |
-| postfix  | string appended to `full_text`                      |
-| interval | interval, in seconds, at which to refresh the block |
-| signal   | os signal to refresh the block when received        |
+| key      | description                                                 |
+|----------|-------------------------------------------------------------|
+| command  | (optional) command to execute for `immediate` configuration |
+| prefix   | string prefixing `full_text`                                |
+| postfix  | string appended to `full_text`                              |
+| interval | interval, in seconds, at which to refresh the block         |
+| signal   | os signal to refresh the block when received                |
 
 ### immediate
 

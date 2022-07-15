@@ -325,7 +325,7 @@ impl Block {
             match toml.interval.map(Duration::try_from_secs_f32) {
                 Some(Ok(mut timeout)) => {
                     if timeout == Duration::ZERO {
-                        warn!("block {} has zero timeout", id);
+                        error!("block {} has zero timeout", id);
                     } else {
                         if timeout < Duration::from_millis(1) {
                             timeout = Duration::from_millis(1);
@@ -362,7 +362,7 @@ impl Block {
                     }
                 }
 
-                Some(Err(error)) => warn!("block {} has invalid timeout: {}", id, error),
+                Some(Err(error)) => error!("block {} has invalid timeout: {}", id, error),
                 _ => (),
             }
 

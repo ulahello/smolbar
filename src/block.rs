@@ -7,14 +7,14 @@ use log::{error, warn};
 use tokio::select;
 use tokio::signal;
 use tokio::signal::unix::SignalKind;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, RwLock, RwLockReadGuard};
 use tokio::task::{self, JoinHandle};
 use tokio::time::{self, Instant};
 
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
 use std::time::Duration;
 
 use crate::config::TomlBlock;
@@ -25,7 +25,7 @@ use crate::protocol::Body;
 #[derive(Debug)]
 #[must_use]
 pub struct Block {
-    body: Arc<Mutex<Body>>,
+    body: Arc<RwLock<Body>>,
 
     // `cmd` is responsible for sending refresh msgs to the bar. it continues as
     // long as it receives `true`, then it halts. `cmd` expects `bar_refresh` to
@@ -48,7 +48,7 @@ impl Block {
     /// `bar_refresh` is connected to a [`Smolbar`](crate::bar::Smolbar)'s
     /// refresh loop.
     #[allow(clippy::missing_panics_doc)]
-    pub fn new(
+    pub async fn new(
         toml: TomlBlock,
         global: Body,
         bar_refresh: mpsc::Sender<bool>,
@@ -56,7 +56,7 @@ impl Block {
         id: usize,
     ) -> Self {
         let toml = Arc::new(toml);
-        let body = Arc::new(Mutex::new(Body::new()));
+        let body = Arc::new(RwLock::new(Body::new()));
 
         let (sig_send, sig_recv) = mpsc::channel(1);
         let (interval_send, interval_recv) = mpsc::channel(1);
@@ -73,7 +73,8 @@ impl Block {
                 cmd_recv,
                 cmd_dir,
                 id,
-            ),
+            )
+            .await,
         );
 
         /* refresh on an interval */
@@ -102,22 +103,22 @@ impl Block {
     }
 
     #[allow(clippy::items_after_statements)]
-    fn task_cmd(
+    async fn task_cmd(
         toml: Arc<TomlBlock>,
         bar_refresh: mpsc::Sender<bool>,
         global: Body,
-        body: Arc<Mutex<Body>>,
+        body: Arc<RwLock<Body>>,
         mut cmd_recv: mpsc::Receiver<bool>,
         cmd_dir: PathBuf,
         id: usize,
     ) -> JoinHandle<()> {
-        fn apply_scopes(
-            mut lines: std::str::Lines,
+        async fn apply_scopes(
+            mut lines: std::str::Lines<'_>,
             global: &Body,
             toml: &Arc<TomlBlock>,
-            body: &Arc<Mutex<Body>>,
+            body: &Arc<RwLock<Body>>,
         ) {
-            let mut body = body.lock().unwrap();
+            let mut body = body.write().await;
 
             fn update<T: Clone + FromStr>(
                 field: &mut Option<T>,
@@ -252,7 +253,7 @@ impl Block {
         }
 
         // initialize block body according to local and global scope
-        apply_scopes("".lines(), &global, &toml, &body);
+        apply_scopes("".lines(), &global, &toml, &body).await;
 
         // respond to refresh requests
         task::spawn(async move {
@@ -297,7 +298,7 @@ impl Block {
 
                             // update body with scopes regardless of whether
                             // command succeeded
-                            apply_scopes(lines, &global, &toml, &body);
+                            apply_scopes(lines, &global, &toml, &body).await;
 
                             // ping parent bar to let know we are refreshed
                             bar_refresh.send(true).await.unwrap();
@@ -392,11 +393,9 @@ impl Block {
         })
     }
 
-    // TODO: this gives mutable access to the body
     /// Lock the body and return a guard to it.
-    #[allow(clippy::missing_panics_doc)]
-    pub fn read(&self) -> MutexGuard<Body> {
-        self.body.lock().unwrap()
+    pub async fn read(&self) -> RwLockReadGuard<Body> {
+        self.body.read().await
     }
 
     /// Gracefully halt the block, consuming it.

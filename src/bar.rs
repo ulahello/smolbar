@@ -125,7 +125,7 @@ impl Smolbar {
                                         match write!(
                                             stdout,
                                             "{}",
-                                            ser::to_string_pretty(&*block.read())
+                                            ser::to_string_pretty(&*block.read().await)
                                                 .expect("invalid body json. this is a bug.")
                                         ) {
                                             Ok(()) => (),
@@ -275,7 +275,7 @@ impl Smolbar {
         if let Some(vec) = &mut *blocks.lock().await {
             let id = vec.len() + 1;
             trace!("pushed block {}", id);
-            vec.push(Block::new(block, global, refresh_send, cmd_dir, id));
+            vec.push(Block::new(block, global, refresh_send, cmd_dir, id).await);
         } else {
             unreachable!("blocks must not be pushed while the inner block vector is taken");
         }

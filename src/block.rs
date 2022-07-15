@@ -323,28 +323,40 @@ impl Block {
             let mut deadline = Instant::now();
 
             match toml.interval.map(Duration::try_from_secs_f32) {
-                Some(Ok(timeout)) => {
-                    loop {
-                        // NOTE: if an iteration is faster than `timeout`,
-                        // deadline < Instant::now
-                        let now = Instant::now();
-                        while deadline < now {
-                            deadline += timeout;
+                Some(Ok(mut timeout)) => {
+                    if timeout == Duration::ZERO {
+                        warn!("block {} has zero timeout", id);
+                    } else {
+                        if timeout < Duration::from_millis(1) {
+                            timeout = Duration::from_millis(1);
+                            warn!(
+                                "block {} timeout was really small and clamped to a millisecond",
+                                id
+                            );
                         }
 
-                        match time::timeout_at(deadline, interval_recv.recv()).await {
-                            Ok(halt) => {
-                                halt.unwrap();
-                                // we received halt msg
-                                yes_actually_exit = true;
-                                break;
+                        loop {
+                            // NOTE: if an iteration is faster than `timeout`,
+                            // deadline < Instant::now
+                            let now = Instant::now();
+                            while deadline < now {
+                                deadline += timeout;
                             }
-                            Err(_) => {
-                                // receiving halt msg timed out, so we refresh
-                                // the body. this creates the behavior of
-                                // refreshing the body at a specific interval
-                                // until halting
-                                cmd_send.send(true).await.unwrap();
+
+                            match time::timeout_at(deadline, interval_recv.recv()).await {
+                                Ok(halt) => {
+                                    halt.unwrap();
+                                    // we received halt msg
+                                    yes_actually_exit = true;
+                                    break;
+                                }
+                                Err(_) => {
+                                    // receiving halt msg timed out, so we refresh
+                                    // the body. this creates the behavior of
+                                    // refreshing the body at a specific interval
+                                    // until halting
+                                    cmd_send.send(true).await.unwrap();
+                                }
                             }
                         }
                     }

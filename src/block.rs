@@ -3,7 +3,7 @@
 
 //! Defines a runtime block.
 
-use log::{error, warn};
+use log::{error, trace, warn};
 use tokio::select;
 use tokio::signal;
 use tokio::signal::unix::SignalKind;
@@ -302,6 +302,7 @@ impl Block {
 
                             // ping parent bar to let know we are refreshed
                             bar_refresh.send(true).await.unwrap();
+                            trace!("block {} requested a refresh", id);
                         }
                     );
                 } else {

@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.4.1] - 2022-07-21
 * fix: improved interval precision
   * uses deadline instead of duration, so time won't drift
 * fixed zero intervals freezing up program

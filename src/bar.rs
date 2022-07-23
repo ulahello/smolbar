@@ -159,7 +159,7 @@ impl Smolbar {
                                         }
                                     }
 
-                                    trace!("bar sent {} block(s)", blocks.len());
+                                    trace!("sent {} block(s)", blocks.len());
                                 } else {
                                     unreachable!("refresh loop expects that guard is held while blocks are taken");
                                 }
@@ -175,7 +175,7 @@ impl Smolbar {
                         break;
                     }
                     Err((recv, error)) => {
-                        error!("bar refresh writer: {}", error);
+                        error!("refresh writer: {}", error);
                         self.refresh_recv = recv;
                     }
                 }
@@ -188,7 +188,7 @@ impl Smolbar {
             match self.cont_stop_recv.recv().await.unwrap() {
                 ContOrStop::Cont => {
                     /* reload configuration */
-                    trace!("bar received cont");
+                    trace!("received cont");
                     info!("reloading config");
 
                     // read configuration
@@ -238,7 +238,7 @@ impl Smolbar {
 
                 ContOrStop::Stop => {
                     /* we received stop signal */
-                    trace!("bar received stop");
+                    trace!("received stop");
 
                     // halt each block. we do this first because blocks expect
                     // self.refresh_recv to be alive.

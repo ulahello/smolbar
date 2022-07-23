@@ -27,9 +27,10 @@ impl Log for Logger {
             };
 
             eprintln!(
-                "[{:.3}] {}: {}",
+                "[{:.3}]  {: >7}  {: <15}   {}",
                 self.epoch.elapsed().as_secs_f32(),
                 level,
+                record.target(),
                 record.args()
             );
         }

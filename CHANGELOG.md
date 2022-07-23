@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* feat: add source of log to logs
 * feat: log which block requests a refresh
 
 ## [0.4.1] - 2022-07-21

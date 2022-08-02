@@ -128,13 +128,11 @@ async fn try_main(args: Args) -> Result<(), Error> {
                     // halt may arrive while waiting for signal
                     select!(
                         stream = stream.recv() => {
-                            // TODO: this is not a valid unwrap. if theres no
-                            // more signals to receive, dont send the message,
-                            // but dont unwrap.
-                            stream.unwrap();
-                            // the receiver must not be dropped until the halt
-                            // branch on this select! is reached.
-                            send.send(msg).await.unwrap();
+                            if stream.is_some() {
+                                // the receiver must not be dropped until the
+                                // halt branch on this select! is reached.
+                                send.send(msg).await.unwrap();
+                            }
                         }
 
                         halt = halt_recv.recv() => {

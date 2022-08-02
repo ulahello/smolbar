@@ -404,14 +404,12 @@ impl Block {
                             }
 
                             sig = stream.recv() => {
-                                // TODO: this is not a valid unwrap. if theres
-                                // no more signals to receive, dont send the
-                                // message, but dont unwrap.
-                                sig.unwrap();
-                                // refresh the body on receiving signal. the cmd
-                                // loop must not halt while signal loop is
-                                // running.
-                                cmd_send.send(true).await.unwrap();
+                                if sig.is_some() {
+                                    // refresh the body on receiving signal. the
+                                    // cmd loop must not halt while signal loop
+                                    // is running.
+                                    cmd_send.send(true).await.unwrap();
+                                }
                             }
                         );
                     }

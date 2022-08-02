@@ -86,7 +86,7 @@ impl Block {
         /* refresh on a signal */
         let signal = (
             sig_send,
-            Self::task_signal(sig_recv, cmd_send.clone(), toml.signal),
+            Self::task_signal(sig_recv, cmd_send.clone(), toml.signal, id),
         );
 
         /* initialize block */
@@ -389,8 +389,11 @@ impl Block {
         mut sig_recv: mpsc::Receiver<()>,
         cmd_send: mpsc::Sender<bool>,
         signal: Option<i32>,
+        id: usize,
     ) -> JoinHandle<()> {
         task::spawn(async move {
+            let mut yes_actually_exit = false;
+
             if let Some(sig) = signal {
                 let sig = SignalKind::from_raw(sig);
                 if let Ok(mut stream) = signal::unix::signal(sig) {
@@ -400,6 +403,7 @@ impl Block {
                                 // sig sender must not be dropped until it sends halt.
                                 halt.unwrap();
                                 // we received halt msg
+                                yes_actually_exit = true;
                                 break;
                             }
 
@@ -414,9 +418,11 @@ impl Block {
                         );
                     }
                 } else {
-                    // TODO: sig_recv dropped here without halt msg!
+                    trace!("block {}: signal {} is invalid", id, sig.as_raw_value());
                 }
-            } else {
+            }
+
+            if !yes_actually_exit {
                 // wait for halt msg
                 sig_recv.recv().await.unwrap();
             }

@@ -347,7 +347,7 @@ impl Block {
                             let now = Instant::now();
                             while deadline < now {
                                 if let Some(new) = deadline.checked_add(timeout) {
-                                    deadline = new
+                                    deadline = new;
                                 } else {
                                     error!("block {}: interval: deadline is unrepresentable", id);
                                     break;

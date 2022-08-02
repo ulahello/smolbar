@@ -346,8 +346,12 @@ impl Block {
                             // deadline < Instant::now
                             let now = Instant::now();
                             while deadline < now {
-                                // TODO: potential overflow
-                                deadline += timeout;
+                                if let Some(new) = deadline.checked_add(timeout) {
+                                    deadline = new
+                                } else {
+                                    error!("block {}: interval: deadline is unrepresentable", id);
+                                    break;
+                                }
                             }
 
                             match time::timeout_at(deadline, interval_recv.recv()).await {

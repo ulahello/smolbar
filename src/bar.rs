@@ -10,12 +10,48 @@ use tokio::{select, task};
 
 use std::io::{stdout, BufWriter, Write};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 
 use crate::block::Block;
 use crate::config::{Config, TomlBlock};
 use crate::protocol::Body;
 use crate::Error;
+
+static BAR_STATUS: AtomicU8 = AtomicU8::new(0);
+
+/// Status of the current bar.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Status {
+    /// The bar doesn't exist, it hasn't been constructed yet
+    NotConstructed = 0,
+    /// The bar has been constructed. It may not be initialized with blocks.
+    Constructed = 1,
+    /// The bar is no longer capable of responding to messages. It may be
+    /// dropped, but it also may still be alive and on its way to being dropped.
+    Dropped = 2,
+}
+
+impl Status {
+    /// Get the status of the current bar.
+    #[must_use]
+    pub fn get() -> Self {
+        Self::from_raw(BAR_STATUS.load(Ordering::SeqCst))
+    }
+
+    fn swap(val: Self) -> Self {
+        Self::from_raw(BAR_STATUS.swap(val as u8, Ordering::SeqCst))
+    }
+
+    fn from_raw(val: u8) -> Self {
+        match val {
+            0 => Self::NotConstructed,
+            1 => Self::Constructed,
+            2 => Self::Dropped,
+            _ => unreachable!("invalid bar status"),
+        }
+    }
+}
 
 /// Configured bar at runtime.
 pub struct Smolbar {
@@ -35,7 +71,8 @@ pub struct Smolbar {
 }
 
 impl Smolbar {
-    /// Constructs a new, inactive [`Smolbar`], with the given configuration.
+    /// Constructs a new, inactive [`Smolbar`], with the given configuration. If
+    /// a bar has already been constructed previously, this returns [`None`].
     ///
     /// When [run](Self::run), `cont_stop_recv` will listen for [`ContOrStop`]
     /// messages. The caller should listen for continue and stop signals and
@@ -46,7 +83,11 @@ impl Smolbar {
         config: Config,
         cont_stop_recv: mpsc::Receiver<ContOrStop>,
         cont_stop_send_halt: broadcast::Sender<()>,
-    ) -> Self {
+    ) -> Option<Self> {
+        if Status::swap(Status::Constructed) != Status::NotConstructed {
+            return None;
+        }
+
         // initialize bar without any blocks
         let (refresh_send, refresh_recv) = mpsc::channel(1);
         let blocks = Arc::new(Mutex::new(Some(Vec::with_capacity(
@@ -73,7 +114,7 @@ impl Smolbar {
             .await;
         }
 
-        bar
+        Some(bar)
     }
 
     /// Send the configured [`Header`](crate::protocol::Header) through standard
@@ -248,6 +289,12 @@ impl Smolbar {
 
                 ContOrStop::Stop => {
                     /* we received stop signal */
+
+                    // the bar is no longer capable of receiving messages
+                    if Status::swap(Status::Dropped) != Status::Constructed {
+                        unreachable!("bar status must be constructed before it is dropped");
+                    }
+
                     trace!("received stop");
 
                     // halt each block. we do this first because blocks expect

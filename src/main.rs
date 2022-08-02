@@ -15,7 +15,7 @@ use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use smolbar::bar::{ContOrStop, Smolbar};
+use smolbar::bar::{ContOrStop, Smolbar, Status};
 use smolbar::config::Config;
 use smolbar::logger;
 use smolbar::protocol::Header;
@@ -83,7 +83,6 @@ async fn try_main(args: Args) -> Result<(), Error> {
 
     /* prepare to send continue and stop msgs to bar */
     let (cont_stop_send, cont_stop_recv) = mpsc::channel(1);
-
     let (sig_halt_send, _) = broadcast::channel(1);
 
     for (sig, msg, name) in [
@@ -116,21 +115,23 @@ async fn try_main(args: Args) -> Result<(), Error> {
 
             task::spawn(async move {
                 loop {
-                    // TODO: the halt sender could send halt, which doesnt block
-                    // until the msg is received. before the msg reaches the
-                    // halt branch, a signal could arrive, causing the stream
-                    // branch to run. at this point, the bar is permitted to be
-                    // dropped because it has sent all of its halt messages.
-                    // when the stream branch tries to send a message to the
-                    // bar's signal receiver, its invariant may be violated,
-                    // unwrapping None.
+                    // the halt sender could send halt, which doesnt block until
+                    // the msg is received. before the msg reaches the halt
+                    // branch, a signal could arrive, causing the stream branch
+                    // to run. at this point, the bar is permitted to be dropped
+                    // because it has sent all of its halt messages. if the
+                    // stream branch tries to send a message to the bar's signal
+                    // receiver while the bar is dropped, its invariant is
+                    // violated. due to this, we must check that the bar is not
+                    // dropped before sending.
 
                     // halt may arrive while waiting for signal
                     select!(
                         stream = stream.recv() => {
-                            if stream.is_some() {
-                                // the receiver must not be dropped until the
-                                // halt branch on this select! is reached.
+                            if stream.is_some() && Status::get() != Status::Dropped {
+                                // the receiver must not be dropped until
+                                // the halt branch on this select! is
+                                // reached.
                                 send.send(msg).await.unwrap();
                             }
                         }
@@ -152,7 +153,10 @@ async fn try_main(args: Args) -> Result<(), Error> {
     }
 
     /* read bar from config */
-    let bar = Smolbar::new(config, cont_stop_recv, sig_halt_send).await;
+    let bar = Smolbar::new(config, cont_stop_recv, sig_halt_send)
+        .await
+        // only 1 bar must ever be constructed.
+        .unwrap();
 
     /* start printing and updating blocks */
     bar.init()?;

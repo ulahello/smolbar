@@ -3,6 +3,7 @@
 ## [unreleased]
 * feat: add source of log to logs
 * feat: log which block requests a refresh
+* fixed several potential panics
 
 ## [0.4.1] - 2022-07-21
 * fix: improved interval precision

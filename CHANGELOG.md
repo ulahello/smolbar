@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.4.2] - 2022-08-02
 * feat: add source of log to logs
 * feat: log which block requests a refresh
 * fixed several potential panics

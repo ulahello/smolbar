@@ -69,7 +69,7 @@ impl Config {
     /// - `path` contents may be invalid TOML
     pub fn read_from_path(path: &Path) -> Result<Config, Error> {
         // canonicalize path before doing anything else. this is important for
-        // getting `command_dir`, which is `path`'s parent
+        // getting `command_dir` bc its `path`'s parent
         let path = path.canonicalize()?;
 
         let toml: TomlBar = toml::from_str(&fs::read_to_string(&path)?)?;
@@ -79,9 +79,12 @@ impl Config {
         let mut command_dir = path.parent().unwrap_or(&path).to_path_buf();
         if let Some(ref dir) = toml.command_dir {
             // if the toml command_dir is relative, its appended to the config
-            // path parent
+            // path parent. otherwise, it replaces it.
             command_dir.push(dir);
         }
+
+        // before pushing toml specified dir, it is canonical. however, since we
+        // push an uncanonicalized path, we should canonicalize here.
         command_dir = command_dir.canonicalize()?;
 
         info!("set command_dir to '{}'", command_dir.display());

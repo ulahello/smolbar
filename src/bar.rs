@@ -20,6 +20,8 @@ use crate::Error;
 /// Configured bar at runtime.
 pub struct Smolbar {
     config: Config,
+
+    // blocks must never be both unlocked and None
     blocks: Arc<Mutex<Option<Vec<Block>>>>,
 
     // sender is somewhere outside this struct. to safely drop the bar, we tell
@@ -93,19 +95,22 @@ impl Smolbar {
     #[allow(clippy::missing_panics_doc)]
     pub async fn run(mut self) {
         /* listen for refresh */
-        let blocks_c = self.blocks.clone();
+        let blocks_c = Arc::clone(&self.blocks);
         let refresh = task::spawn(async move {
             loop {
-                let blocks_c = blocks_c.clone();
+                let blocks_c = Arc::clone(&blocks_c);
                 let inner = task::spawn(async move {
                     let mut stdout = BufWriter::new(stdout());
 
-                    // continue as long as receive true
+                    // continue as long as we receive true. self.refresh_send
+                    // must not be dropped until it sends a halt msg.
                     while self.refresh_recv.recv().await.unwrap() {
                         select!(
                             // we may receive a halt msg while waiting to take
                             // the lock
                             msg = self.refresh_recv.recv() => {
+                                // refresh sender must not be dropped until it
+                                // sends a halt msg.
                                 if !msg.unwrap() {
                                     break;
                                 }
@@ -185,6 +190,8 @@ impl Smolbar {
         /* listen for cont and stop */
         // TODO: header isn't (nor can be) resent when reloading
         loop {
+            // cont_stop sender must not be dropped until it sends
+            // ContOrStop::Stop.
             match self.cont_stop_recv.recv().await.unwrap() {
                 ContOrStop::Cont => {
                     /* reload configuration */
@@ -199,12 +206,15 @@ impl Smolbar {
                             {
                                 // halt all blocks
                                 let mut guard = self.blocks.lock().await;
+                                // self.blocks must never be both unlocked and None
                                 let blocks = guard.take().unwrap();
                                 for block in blocks {
                                     block.halt().await;
                                 }
 
-                                // after taking, put back Some before releasing the guard
+                                // after taking, put back Some before releasing
+                                // the guard. this way, its None state is
+                                // inaccessible.
                                 *guard = Some(Vec::with_capacity(self.config.toml.blocks.len()));
 
                                 trace!("cont: halted all blocks");
@@ -243,6 +253,7 @@ impl Smolbar {
                     // halt each block. we do this first because blocks expect
                     // self.refresh_recv to be alive.
                     let mut guard = self.blocks.lock().await;
+                    // blocks must never be both unlocked and None.
                     let blocks = guard.take().unwrap();
                     for block in blocks {
                         block.halt().await;
@@ -252,11 +263,15 @@ impl Smolbar {
 
                     // tell `refresh` to halt, now that all blocks are dropped
                     trace!("stop: sending halt to refresh loop");
+                    // refresh loop must not halt until it receives halt msg
                     self.refresh_send.send(false).await.unwrap();
                     trace!("stop: waiting for refresh loop to halt");
+                    // refresh loop must not panic
                     refresh.await.unwrap();
 
-                    // tell the senders attached to cont/stop recv to halt
+                    // tell the senders attached to cont/stop recv to halt.
+                    // after this, we must not recv() on self.cont_stop_recv.
+                    // the signal loop must not halt until it receives halt.
                     self.cont_stop_send_halt.send(()).unwrap();
 
                     break;

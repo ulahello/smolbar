@@ -116,14 +116,30 @@ async fn try_main(args: Args) -> Result<(), Error> {
 
             task::spawn(async move {
                 loop {
+                    // TODO: the halt sender could send halt, which doesnt block
+                    // until the msg is received. before the msg reaches the
+                    // halt branch, a signal could arrive, causing the stream
+                    // branch to run. at this point, the bar is permitted to be
+                    // dropped because it has sent all of its halt messages.
+                    // when the stream branch tries to send a message to the
+                    // bar's signal receiver, its invariant may be violated,
+                    // unwrapping None.
+
                     // halt may arrive while waiting for signal
                     select!(
                         stream = stream.recv() => {
+                            // TODO: this is not a valid unwrap. if theres no
+                            // more signals to receive, dont send the message,
+                            // but dont unwrap.
                             stream.unwrap();
+                            // the receiver must not be dropped until the halt
+                            // branch on this select! is reached.
                             send.send(msg).await.unwrap();
                         }
 
                         halt = halt_recv.recv() => {
+                            // the sender must not be dropped until it sends a
+                            // halt msg.
                             halt.unwrap();
 
                             trace!("{} signal listener shutting down", name);
@@ -141,6 +157,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
     let bar = Smolbar::new(config, cont_stop_recv, sig_halt_send).await;
 
     /* start printing and updating blocks */
+    // TODO: if init fails, the bar is NOT halted properly, it is dropped.
     bar.init()?;
     bar.run().await;
 

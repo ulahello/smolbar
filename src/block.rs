@@ -91,6 +91,8 @@ impl Block {
 
         /* initialize block */
         task::spawn(async move {
+            // cmd must only halt in Self::halt. otherwise, it could halt during
+            // this function and this would panic
             cmd_send.send(true).await.unwrap();
         });
 
@@ -257,6 +259,7 @@ impl Block {
 
         // respond to refresh requests
         task::spawn(async move {
+            // senders must not be dropped until cmd_recv receives `false`.
             while cmd_recv.recv().await.unwrap() {
                 if let Some(ref toml_command) = toml.command {
                     let mut command = Command::new(toml_command);
@@ -300,7 +303,9 @@ impl Block {
                             // command succeeded
                             apply_scopes(lines, &global, &toml, &body).await;
 
-                            // ping parent bar to let know we are refreshed
+                            // ping parent bar to let know we are refreshed. the
+                            // refresh receiver must not be dropped until cmd
+                            // receives halt.
                             bar_refresh.send(true).await.unwrap();
                             trace!("block {} requested a refresh", id);
                         }
@@ -341,21 +346,26 @@ impl Block {
                             // deadline < Instant::now
                             let now = Instant::now();
                             while deadline < now {
+                                // TODO: potential overflow
                                 deadline += timeout;
                             }
 
                             match time::timeout_at(deadline, interval_recv.recv()).await {
                                 Ok(halt) => {
+                                    // interval sender must not be dropped until
+                                    // it sends a halt msg.
                                     halt.unwrap();
                                     // we received halt msg
                                     yes_actually_exit = true;
                                     break;
                                 }
                                 Err(_) => {
-                                    // receiving halt msg timed out, so we refresh
-                                    // the body. this creates the behavior of
-                                    // refreshing the body at a specific interval
-                                    // until halting
+                                    // receiving halt msg timed out, so we
+                                    // refresh the body. this creates the
+                                    // behavior of refreshing the body at a
+                                    // specific interval until halting. cmd loop
+                                    // must not halt while interval loop is
+                                    // running.
                                     cmd_send.send(true).await.unwrap();
                                 }
                             }
@@ -368,7 +378,8 @@ impl Block {
             }
 
             if !yes_actually_exit {
-                // wait for halt msg
+                // wait for halt msg. the interval sender must not be dropped
+                // until it sends a halt msg.
                 interval_recv.recv().await.unwrap();
             }
         })
@@ -386,18 +397,26 @@ impl Block {
                     loop {
                         select!(
                             halt = sig_recv.recv() => {
+                                // sig sender must not be dropped until it sends halt.
                                 halt.unwrap();
                                 // we received halt msg
                                 break;
                             }
 
                             sig = stream.recv() => {
+                                // TODO: this is not a valid unwrap. if theres
+                                // no more signals to receive, dont send the
+                                // message, but dont unwrap.
                                 sig.unwrap();
-                                // refresh the body on receiving signal
+                                // refresh the body on receiving signal. the cmd
+                                // loop must not halt while signal loop is
+                                // running.
                                 cmd_send.send(true).await.unwrap();
                             }
                         );
                     }
+                } else {
+                    // TODO: sig_recv dropped here without halt msg!
                 }
             } else {
                 // wait for halt msg
@@ -414,17 +433,21 @@ impl Block {
     /// Gracefully halt the block, consuming it.
     #[allow(clippy::missing_panics_doc)]
     pub async fn halt(self) {
-        // halt interval and signal tasks
+        // halt interval and signal tasks. both loops must exclusively be halted
+        // here.
         task::spawn(async move { self.interval.0.send(()).await.unwrap() });
         task::spawn(async move { self.signal.0.send(()).await.unwrap() });
 
+        // both loops must not panic
         self.interval.1.await.unwrap();
         self.signal.1.await.unwrap();
 
         // halt cmd channel, after interval/signal tasks are done
-        // NOTE: if `cmd` halts while `interval` or `signal` are alive, they will
-        // fail to send a refresh to `cmd`
+        // NOTE: if `cmd` halts while `interval` or `signal` are alive, they
+        // will fail to send a refresh to `cmd`
         self.cmd.0.send(false).await.unwrap();
+
+        // cmd loop must not panic
         self.cmd.1.await.unwrap();
     }
 }

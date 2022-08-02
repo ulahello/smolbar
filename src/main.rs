@@ -155,7 +155,6 @@ async fn try_main(args: Args) -> Result<(), Error> {
     let bar = Smolbar::new(config, cont_stop_recv, sig_halt_send).await;
 
     /* start printing and updating blocks */
-    // TODO: if init fails, the bar is NOT halted properly, it is dropped.
     bar.init()?;
     bar.run().await;
 

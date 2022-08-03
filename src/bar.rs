@@ -289,11 +289,17 @@ impl Smolbar {
 
                 ContOrStop::Stop => {
                     /* we received stop signal */
-
                     // the bar is no longer capable of receiving messages
                     if Status::swap(Status::Dropped) != Status::Constructed {
                         unreachable!("bar status must be constructed before it is dropped");
                     }
+
+                    // it's possible for a msg to be sent to cont_or_stop_recv
+                    // after the previous message is recognized as Stop, but
+                    // before the status is set to Dropped. if sending such a
+                    // message is being awaited, this will cause sending to
+                    // return.
+                    let _ = self.cont_stop_recv.try_recv();
 
                     trace!("received stop");
 

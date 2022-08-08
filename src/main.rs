@@ -84,6 +84,8 @@ async fn try_main(args: Args) -> Result<(), Error> {
     let (cont_stop_send, cont_stop_recv) = mpsc::channel(1);
     let (sig_halt_send, _) = broadcast::channel(1);
 
+    let mut signal_listeners = Vec::with_capacity(2);
+
     for (sig, msg, name) in [
         (
             config
@@ -115,7 +117,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
             let mut halt_recv = sig_halt_send.subscribe();
             let send = cont_stop_send.clone();
 
-            task::spawn(async move {
+            let task = task::spawn(async move {
                 let span = span!(
                     Level::TRACE,
                     "signal_listen",
@@ -149,9 +151,6 @@ async fn try_main(args: Args) -> Result<(), Error> {
                         }
 
                         halt = halt_recv.recv() => {
-                            // TODO: this task isnt awaited so this usually
-                            // doesnt run because the function returns first
-
                             // the sender must not be dropped until it sends a
                             // halt msg.
                             halt.unwrap();
@@ -163,6 +162,8 @@ async fn try_main(args: Args) -> Result<(), Error> {
                     );
                 }
             });
+
+            signal_listeners.push(task);
         } else {
             trace!("signal is invalid");
         }
@@ -177,6 +178,11 @@ async fn try_main(args: Args) -> Result<(), Error> {
     /* start printing and updating blocks */
     bar.init()?;
     bar.run().await;
+
+    /* wait for signal listeners to halt */
+    for task in signal_listeners {
+        task.await.unwrap();
+    }
 
     Ok(())
 }

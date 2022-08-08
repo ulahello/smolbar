@@ -278,7 +278,12 @@ impl Block {
 
                         // refresh block body
                         Ok(try_output) = task::spawn_blocking(move || command.output()) => {
-                            let span = span!(Level::TRACE, "cmd_loop", id, command = toml_command);
+                            let span = span!(
+                                Level::TRACE,
+                                "block_cmd_loop",
+                                id,
+                                command = toml_command,
+                            );
                             let _enter = span.enter();
 
                             let immediate = match try_output {
@@ -329,7 +334,7 @@ impl Block {
             let mut yes_actually_exit = false;
             let mut deadline = Instant::now();
 
-            let span = span!(Level::TRACE, "interval_loop", id);
+            let span = span!(Level::TRACE, "block_interval_loop", id);
 
             match toml.interval.map(Duration::try_from_secs_f32) {
                 Some(Ok(mut timeout)) => {
@@ -404,7 +409,7 @@ impl Block {
         task::spawn(async move {
             let mut yes_actually_exit = false;
 
-            let span = span!(Level::TRACE, "signal_loop", id, signal);
+            let span = span!(Level::TRACE, "block_signal_loop", id, signal);
 
             if let Some(sig) = signal {
                 let sig = SignalKind::from_raw(sig);

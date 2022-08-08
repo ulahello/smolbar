@@ -3,8 +3,8 @@
 
 //! Configuration structures for the bar and its blocks.
 
-use log::{info, trace};
 use serde_derive::{Deserialize, Serialize};
+use tracing::{info, trace};
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -49,6 +49,7 @@ pub struct TomlBlock {
 }
 
 /// Convenience struct for easy access to all configuration options.
+#[derive(Debug)]
 pub struct Config {
     /// Path of the TOML configuration file
     pub path: PathBuf,
@@ -67,6 +68,7 @@ impl Config {
     /// - Canonicalizing `path` may fail
     /// - Reading from `path` may fail
     /// - `path` contents may be invalid TOML
+    #[tracing::instrument]
     pub fn read_from_path(path: &Path) -> Result<Config, Error> {
         // canonicalize path before doing anything else. this is important for
         // getting `command_dir` bc its `path`'s parent
@@ -85,14 +87,18 @@ impl Config {
 
         // before pushing toml specified dir, it is canonical. however, since we
         // push an uncanonicalized path, we should canonicalize here.
+        trace!(
+            path = command_dir.display().to_string(),
+            "canonicalizing command_dir",
+        );
         command_dir = command_dir.canonicalize()?;
 
-        info!("set command_dir to '{}'", command_dir.display());
+        info!(path = command_dir.display().to_string(), "set command_dir");
 
         trace!(
-            "read {} block(s) from '{}'",
-            toml.blocks.len(),
-            path.display()
+            num = toml.blocks.len(),
+            path = path.display().to_string(),
+            "read block(s)",
         );
 
         Ok(Self {

@@ -3,10 +3,10 @@
 
 //! Defines a runtime bar.
 
-use log::{error, info, trace};
 use serde_json::ser;
 use tokio::sync::{broadcast, mpsc, Mutex};
 use tokio::{select, task};
+use tracing::{error, info, span, trace, Level};
 
 use std::io::{stdout, BufWriter, Write};
 use std::path::PathBuf;
@@ -54,6 +54,7 @@ impl Status {
 }
 
 /// Configured bar at runtime.
+#[derive(Debug)]
 pub struct Smolbar {
     config: Config,
 
@@ -84,6 +85,9 @@ impl Smolbar {
         cont_stop_recv: mpsc::Receiver<ContOrStop>,
         cont_stop_send_halt: broadcast::Sender<()>,
     ) -> Option<Self> {
+        let span = span!(Level::TRACE, "bar_new");
+        let _enter = span.enter();
+
         if Status::swap(Status::Constructed) != Status::NotConstructed {
             return None;
         }
@@ -124,10 +128,20 @@ impl Smolbar {
     ///
     /// Writing to standard output may fail.
     pub fn init(&self) -> Result<(), Error> {
+        let span = span!(
+            Level::TRACE,
+            "bar_init",
+            header.version = self.config.toml.header.version,
+            header.click_events = self.config.toml.header.click_events,
+            header.cont_signal = self.config.toml.header.cont_signal,
+            header.stop_signal = self.config.toml.header.stop_signal,
+        );
+        let _enter = span.enter();
+
         ser::to_writer(stdout(), &self.config.toml.header)?;
         write!(stdout(), "\n[")?;
 
-        trace!("sent header: {:?}", self.config.toml.header);
+        trace!("sent header");
 
         Ok(())
     }
@@ -159,6 +173,13 @@ impl Smolbar {
 
                             guard = blocks_c.lock() => {
                                 if let Some(ref blocks) = *guard {
+                                    let span = span!(
+                                        Level::TRACE,
+                                        "refresh_loop_write",
+                                        num_blocks = blocks.len(),
+                                    );
+                                    let _enter = span.enter();
+
                                     // write each json block
                                     match write!(stdout, "[") {
                                         Ok(()) => (),
@@ -205,7 +226,7 @@ impl Smolbar {
                                         }
                                     }
 
-                                    trace!("sent {} block(s)", blocks.len());
+                                    trace!("sent block(s)");
                                 } else {
                                     unreachable!("refresh loop expects that guard is held while blocks are taken");
                                 }
@@ -235,8 +256,11 @@ impl Smolbar {
             // ContOrStop::Stop.
             match self.cont_stop_recv.recv().await.unwrap() {
                 ContOrStop::Cont => {
+                    let span = span!(Level::TRACE, "bar_recv_cont");
+                    let _enter = span.enter();
+
                     /* reload configuration */
-                    trace!("received cont");
+                    trace!("received msg");
                     info!("reloading config");
 
                     // read configuration
@@ -258,7 +282,7 @@ impl Smolbar {
                                 // inaccessible.
                                 *guard = Some(Vec::with_capacity(self.config.toml.blocks.len()));
 
-                                trace!("cont: halted all blocks");
+                                trace!("halted all blocks");
                             }
 
                             // add new blocks
@@ -280,7 +304,7 @@ impl Smolbar {
                             error!(
                                 "reading config from '{}' failed: {}",
                                 self.config.path.display(),
-                                error
+                                error,
                             );
                             info!("keeping current configuration");
                         }
@@ -288,6 +312,9 @@ impl Smolbar {
                 }
 
                 ContOrStop::Stop => {
+                    let span = span!(Level::TRACE, "bar_recv_stop");
+                    let _enter = span.enter();
+
                     /* we received stop signal */
                     // the bar is no longer capable of receiving messages
                     if Status::swap(Status::Dropped) != Status::Constructed {
@@ -301,7 +328,7 @@ impl Smolbar {
                     // return.
                     let _ = self.cont_stop_recv.try_recv();
 
-                    trace!("received stop");
+                    trace!("received msg");
 
                     // halt each block. we do this first because blocks expect
                     // self.refresh_recv to be alive.
@@ -312,13 +339,13 @@ impl Smolbar {
                         block.halt().await;
                     }
 
-                    trace!("stop: halted all blocks");
+                    trace!("halted all blocks");
 
                     // tell `refresh` to halt, now that all blocks are dropped
-                    trace!("stop: sending halt to refresh loop");
+                    trace!("sending halt to refresh loop");
                     // refresh loop must not halt until it receives halt msg
                     self.refresh_send.send(false).await.unwrap();
-                    trace!("stop: waiting for refresh loop to halt");
+                    trace!("waiting for refresh loop to halt");
                     // refresh loop must not panic
                     refresh.await.unwrap();
 
@@ -340,9 +367,11 @@ impl Smolbar {
         block: TomlBlock,
         global: Body,
     ) {
+        let span = span!(Level::TRACE, "bar_push_block");
+        let _enter = span.enter();
         if let Some(vec) = &mut *blocks.lock().await {
             let id = vec.len() + 1;
-            trace!("pushed block {}", id);
+            trace!(id, "pushed block");
             vec.push(Block::new(block, global, refresh_send, cmd_dir, id).await);
         } else {
             unreachable!("blocks must not be pushed while the inner block vector is taken");

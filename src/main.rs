@@ -6,18 +6,17 @@
 
 use clap::Parser;
 use dirs::config_dir;
-use log::{error, info, trace, LevelFilter};
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::{broadcast, mpsc};
 use tokio::{select, task};
+use tracing::{error, info, span, trace, Level};
 
-use std::io::{stdout, Write};
+use std::io::{stderr, stdout, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use smolbar::bar::{ContOrStop, Smolbar, Status};
 use smolbar::config::Config;
-use smolbar::logger;
 use smolbar::protocol::Header;
 use smolbar::Error;
 
@@ -38,24 +37,24 @@ struct Args {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
-    // start smolbar with logging enabled
-    logger::set_level(LevelFilter::Trace);
-    let exit_code = if let Err(err) = try_main(Args::parse()).await {
+    tracing_subscriber::fmt()
+        .with_writer(stderr)
+        .with_max_level(Level::TRACE)
+        .with_timer(tracing_subscriber::fmt::time::uptime())
+        .init();
+
+    if let Err(err) = try_main(Args::parse()).await {
         error!("{}", err);
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS
-    };
-
-    // disable logging before main returns. mio makes a trace log (from signal
-    // handling) when the program ends, so this hides it
-    logger::set_level(LevelFilter::Off);
-
-    // return with the appropriate exit code
-    exit_code
+    }
 }
 
 async fn try_main(args: Args) -> Result<(), Error> {
+    let span = span!(Level::INFO, "main");
+    let _enter = span.enter();
+
     /* print license information */
     if args.license {
         writeln!(stdout(), "{}", env!("CARGO_PKG_LICENSE"))?;
@@ -76,7 +75,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
         }
     };
 
-    info!("set config path to '{}'", path.display());
+    info!(path = path.display().to_string(), "set config path");
 
     /* load configuration */
     let config = Config::read_from_path(&path)?;
@@ -105,15 +104,25 @@ async fn try_main(args: Args) -> Result<(), Error> {
             "stop",
         ),
     ] {
+        let span = span!(Level::TRACE, "signal_consider", name, sig);
+        let _enter = span.enter();
+
         let sig = SignalKind::from_raw(sig);
 
         if let Ok(mut stream) = signal(sig) {
-            trace!("{} signal {} is valid, listening", name, sig.as_raw_value());
+            trace!("signal is valid, listening");
 
             let mut halt_recv = sig_halt_send.subscribe();
             let send = cont_stop_send.clone();
 
             task::spawn(async move {
+                let span = span!(
+                    Level::TRACE,
+                    "signal_listen",
+                    name,
+                    sig = sig.as_raw_value()
+                );
+
                 loop {
                     // the halt sender could send halt, which doesnt block until
                     // the msg is received. before the msg reaches the halt
@@ -129,6 +138,9 @@ async fn try_main(args: Args) -> Result<(), Error> {
                     select!(
                         stream = stream.recv() => {
                             if stream.is_some() && Status::get() != Status::Dropped {
+                                let _enter = span.enter();
+                                trace!("received signal");
+
                                 // the receiver must not be dropped until
                                 // the halt branch on this select! is
                                 // reached.
@@ -137,18 +149,22 @@ async fn try_main(args: Args) -> Result<(), Error> {
                         }
 
                         halt = halt_recv.recv() => {
+                            // TODO: this task isnt awaited so this usually
+                            // doesnt run because the function returns first
+
                             // the sender must not be dropped until it sends a
                             // halt msg.
                             halt.unwrap();
 
-                            trace!("{} signal listener shutting down", name);
+                            let _enter = span.enter();
+                            trace!("signal listener shutting down");
                             break;
                         }
                     );
                 }
             });
         } else {
-            trace!("{} signal {} is invalid", name, sig.as_raw_value());
+            trace!("signal is invalid");
         }
     }
 
@@ -161,8 +177,6 @@ async fn try_main(args: Args) -> Result<(), Error> {
     /* start printing and updating blocks */
     bar.init()?;
     bar.run().await;
-
-    info!("shutting down");
 
     Ok(())
 }

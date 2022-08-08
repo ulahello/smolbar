@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* switched to tracing for logging
 * fixed extremely unlikely invalid state
 
 ## [0.4.2] - 2022-08-02

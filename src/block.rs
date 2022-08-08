@@ -3,13 +3,13 @@
 
 //! Defines a runtime block.
 
-use log::{error, trace, warn};
 use tokio::select;
 use tokio::signal;
 use tokio::signal::unix::SignalKind;
 use tokio::sync::{mpsc, RwLock, RwLockReadGuard};
 use tokio::task::{self, JoinHandle};
 use tokio::time::{self, Instant};
+use tracing::{error, span, trace, warn, Level};
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -278,19 +278,20 @@ impl Block {
 
                         // refresh block body
                         Ok(try_output) = task::spawn_blocking(move || command.output()) => {
+                            let span = span!(Level::TRACE, "cmd_loop", id, command = toml_command);
+                            let _enter = span.enter();
+
                             let immediate = match try_output {
                                 Ok(output) => if let Ok(utf8) = String::from_utf8(output.stdout) {
                                     Some(utf8)
                                 } else {
                                     error!(
-                                        "block {}: command `{}` produced invalid utf8",
-                                        id,
-                                        toml_command
+                                        "command produced invalid utf8",
                                     );
                                     None
                                 }
                                 Err(error) => {
-                                    error!("block {}: command `{}`: {}", id, toml_command, error);
+                                    error!("command error: {}", error);
                                     None
                                 }
                             }.unwrap_or_else(|| "".into());
@@ -307,7 +308,7 @@ impl Block {
                             // refresh receiver must not be dropped until cmd
                             // receives halt.
                             bar_refresh.send(true).await.unwrap();
-                            trace!("block {} requested a refresh", id);
+                            trace!("refresh requested");
                         }
                     );
                 } else {
@@ -328,17 +329,18 @@ impl Block {
             let mut yes_actually_exit = false;
             let mut deadline = Instant::now();
 
+            let span = span!(Level::TRACE, "interval_loop", id);
+
             match toml.interval.map(Duration::try_from_secs_f32) {
                 Some(Ok(mut timeout)) => {
                     if timeout == Duration::ZERO {
-                        error!("block {} has zero timeout", id);
+                        let _enter = span.enter();
+                        error!("can't have timeout of zero");
                     } else {
                         if timeout < Duration::from_millis(1) {
+                            let _enter = span.enter();
                             timeout = Duration::from_millis(1);
-                            warn!(
-                                "block {} timeout was really small and clamped to a millisecond",
-                                id
-                            );
+                            warn!("timeout was really small and clamped to a millisecond");
                         }
 
                         loop {
@@ -349,7 +351,8 @@ impl Block {
                                 if let Some(new) = deadline.checked_add(timeout) {
                                     deadline = new;
                                 } else {
-                                    error!("block {}: interval: deadline is unrepresentable", id);
+                                    let _enter = span.enter();
+                                    error!("deadline is unrepresentable");
                                     break;
                                 }
                             }
@@ -377,7 +380,10 @@ impl Block {
                     }
                 }
 
-                Some(Err(error)) => error!("block {} has invalid timeout: {}", id, error),
+                Some(Err(error)) => {
+                    let _enter = span.enter();
+                    error!("invalid timeout: {}", error);
+                }
                 _ => (),
             }
 
@@ -397,6 +403,8 @@ impl Block {
     ) -> JoinHandle<()> {
         task::spawn(async move {
             let mut yes_actually_exit = false;
+
+            let span = span!(Level::TRACE, "signal_loop", id, signal);
 
             if let Some(sig) = signal {
                 let sig = SignalKind::from_raw(sig);
@@ -422,7 +430,8 @@ impl Block {
                         );
                     }
                 } else {
-                    trace!("block {}: signal {} is invalid", id, sig.as_raw_value());
+                    let _enter = span.enter();
+                    error!("invalid signal");
                 }
             }
 

@@ -175,7 +175,7 @@ impl Smolbar {
                                 if let Some(ref blocks) = *guard {
                                     let span = span!(
                                         Level::TRACE,
-                                        "refresh_loop_write",
+                                        "bar_refresh_loop_write",
                                         num_blocks = blocks.len(),
                                     );
                                     let _enter = span.enter();

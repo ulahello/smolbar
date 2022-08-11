@@ -90,11 +90,9 @@ impl Block {
         );
 
         /* initialize block */
-        task::spawn(async move {
-            // cmd must only halt in Self::halt. otherwise, it could halt during
-            // this function and this would panic
-            cmd_send.send(true).await.unwrap();
-        });
+        // cmd must only halt in Self::halt. otherwise, it could halt during
+        // this function and this would panic
+        cmd_send.send(true).await.unwrap();
 
         Self {
             body,

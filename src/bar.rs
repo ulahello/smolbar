@@ -53,6 +53,12 @@ impl Status {
     }
 }
 
+// TODO: Smolbar is a silly thing. its only instantiated once, but is written so
+// u can instantiate multiple (tho it panics). and Smolbar::init should only be
+// called once because thats what the protocol requires. this is basically main,
+// and would completely make sense in main.rs (the program is `smolbar`). having
+// this be a struct is kinda `public class HelloSwaybarApp`
+
 /// Configured bar at runtime.
 #[derive(Debug)]
 pub struct Smolbar {

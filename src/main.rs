@@ -176,8 +176,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
         .unwrap();
 
     /* start printing and updating blocks */
-    bar.init()?;
-    bar.run().await;
+    bar.run().await?;
 
     /* wait for signal listeners to halt */
     for task in signal_listeners {

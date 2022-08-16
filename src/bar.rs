@@ -53,11 +53,12 @@ impl Status {
     }
 }
 
-// TODO: Smolbar is a silly thing. its only instantiated once, but is written so
-// u can instantiate multiple (tho it panics). and Smolbar::init should only be
-// called once because thats what the protocol requires. this is basically main,
-// and would completely make sense in main.rs (the program is `smolbar`). having
-// this be a struct is kinda `public class HelloSwaybarApp`
+// TODO: Smolbar is a /lil/ bit silly? its only instantiated once, but is
+// written so u can instantiate multiple (tho it panics). it /would/ make sense
+// inlined in main.rs (the program is `smolbar`). having this be a struct is
+// kinda `public class HelloSwaybarApp`. but, theres friction there too because
+// of Smolbar::push_block being used in multiple places. it's not entirely
+// inlinable
 
 /// Configured bar at runtime.
 #[derive(Debug)]
@@ -133,7 +134,7 @@ impl Smolbar {
     /// # Errors
     ///
     /// Writing to standard output may fail.
-    pub fn init(&self) -> Result<(), Error> {
+    fn init(&self) -> Result<(), Error> {
         let span = span!(
             Level::TRACE,
             "bar_init",
@@ -152,9 +153,17 @@ impl Smolbar {
         Ok(())
     }
 
-    /// Activate and run the bar until completion.
+    /// Activate and run the bar until completion. This also sends the
+    /// [`Header`](crate::protocol::Header).
+    ///
+    /// # Errors
+    ///
+    /// Writing the header to `stdout` may fail.
     #[allow(clippy::missing_panics_doc)]
-    pub async fn run(mut self) {
+    pub async fn run(mut self) -> Result<(), Error> {
+        // initialize header
+        self.init()?;
+
         /* listen for refresh */
         let blocks_c = Arc::clone(&self.blocks);
         let refresh = task::spawn(async move {
@@ -364,6 +373,8 @@ impl Smolbar {
                 }
             }
         }
+
+        Ok(())
     }
 
     async fn push_block(

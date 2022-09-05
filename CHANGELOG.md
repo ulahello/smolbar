@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* log time instead of uptime
 
 ## [0.5.0] - 2022-08-08
 * switched to tracing for logging

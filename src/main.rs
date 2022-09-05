@@ -40,7 +40,7 @@ async fn main() -> ExitCode {
     tracing_subscriber::fmt()
         .with_writer(stderr)
         .with_max_level(Level::TRACE)
-        .with_timer(tracing_subscriber::fmt::time::uptime())
+        .with_timer(tracing_subscriber::fmt::time::time())
         .init();
 
     if let Err(err) = try_main(Args::parse()).await {

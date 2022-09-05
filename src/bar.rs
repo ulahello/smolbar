@@ -333,7 +333,7 @@ impl Smolbar {
                     /* we received stop signal */
                     // the bar is no longer capable of receiving messages
                     if Status::swap(Status::Dropped) != Status::Constructed {
-                        unreachable!("bar status must be constructed before it is dropped");
+                        unreachable!("bar status must be Constructed before it is Dropped");
                     }
 
                     // it's possible for a msg to be sent to cont_or_stop_recv

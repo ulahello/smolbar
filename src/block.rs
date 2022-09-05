@@ -42,11 +42,10 @@ pub struct Block {
 }
 
 impl Block {
-    // TODO: Smolbar refresh loop is private
     /// Initializes a new [`Block`].
     ///
-    /// `bar_refresh` is connected to a [`Smolbar`](crate::bar::Smolbar)'s
-    /// refresh loop.
+    /// A `Block` expects that sending `true` through `bar_refresh` will trigger
+    /// a refresh of all blocks, and sending `false` will halt that loop.
     #[allow(clippy::missing_panics_doc)]
     pub async fn new(
         toml: TomlBlock,

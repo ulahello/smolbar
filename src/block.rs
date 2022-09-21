@@ -296,7 +296,7 @@ impl Block {
                                     error!("command error: {}", error);
                                     None
                                 }
-                            }.unwrap_or_else(|| "".into());
+                            }.unwrap_or_default();
 
                             // if command fails (and immedate == ""), this
                             // iterator will only yield None

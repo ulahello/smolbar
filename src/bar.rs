@@ -336,13 +336,6 @@ impl Smolbar {
                         unreachable!("bar status must be Constructed before it is Dropped");
                     }
 
-                    // it's possible for a msg to be sent to cont_or_stop_recv
-                    // after the previous message is recognized as Stop, but
-                    // before the status is set to Dropped. if sending such a
-                    // message is being awaited, this will cause sending to
-                    // return.
-                    let _ = self.cont_stop_recv.try_recv();
-
                     trace!("received msg");
 
                     // halt each block. we do this first because blocks expect

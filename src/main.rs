@@ -2,7 +2,7 @@
 // licensed under GPL-3.0-or-later
 
 #![forbid(unsafe_code)]
-#![warn(clippy::pedantic)]
+#![warn(clippy::pedantic, clippy::cargo)]
 
 use clap::Parser;
 use dirs::config_dir;

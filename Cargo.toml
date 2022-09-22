@@ -4,7 +4,10 @@ version = "0.5.0"
 authors = ["Ula Shipman <ula.hello@mailbox.org>"]
 edition = "2021"
 description = "smol status command for sway"
+repository = "https://github.com/ulahello/smolbar"
 license = "GPL-3.0-or-later"
+keywords = ["sway", "swaybar"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "3", features = ["derive"] }

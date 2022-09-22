@@ -22,8 +22,8 @@ use crate::protocol::Body;
 
 /// Configured block at runtime, which communicates to a parent
 /// [bar](crate::bar::Smolbar).
-#[derive(Debug)]
 #[must_use]
+#[derive(Debug)]
 pub struct Block {
     body: Arc<RwLock<Body>>,
 

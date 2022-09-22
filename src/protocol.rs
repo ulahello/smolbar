@@ -10,7 +10,6 @@ use std::str::FromStr;
 
 /// Header object as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-#[must_use]
 pub struct Header {
     /// "The protocol version to use. Currently, this must be 1"
     #[serde(default = "Header::default_version")]
@@ -35,6 +34,7 @@ impl Header {
     pub const DEFAULT_STOP_SIG: i32 = SIGSTOP;
 
     /// Returns a new [`Header`] with all optional fields blank.
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             version: Self::DEFAULT_VERSION,
@@ -62,7 +62,6 @@ impl Default for Header {
 
 /// Body element as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[must_use]
 pub struct Body {
     /// "The text that will be displayed. If missing, the block will be skipped."
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -132,6 +131,7 @@ pub struct Body {
 
 impl Body {
     /// Returns a new [`Body`] with all optional fields blank.
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             full_text: None,
@@ -182,7 +182,6 @@ impl Default for Body {
 /// [Body alignment](Body::align), as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
-#[must_use]
 pub enum Align {
     /// Left alignment
     Left,
@@ -208,7 +207,6 @@ impl FromStr for Align {
 /// [Body markup](Body::markup), as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
-#[must_use]
 pub enum Markup {
     /// Use [Pango markup](https://docs.gtk.org/Pango/pango_markup.html)
     Pango,
@@ -230,7 +228,6 @@ impl FromStr for Markup {
 
 /// Click event, as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[must_use]
 pub struct ClickEvent {
     /// "The name of the block, if set"
     pub name: Option<String>,

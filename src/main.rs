@@ -82,6 +82,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
     /* prepare to send continue and stop msgs to bar */
     let (cont_stop_send, cont_stop_recv) = mpsc::channel(1);
     let cont_halt = Arc::new(Notify::new());
+    let cont_halt_ack = Arc::new(Notify::new());
     let mut signal_listeners = Vec::with_capacity(2);
 
     for (sig, msg, name) in [
@@ -114,9 +115,10 @@ async fn try_main(args: Args) -> Result<(), Error> {
 
             let send = cont_stop_send.clone();
             let cont_halt = Arc::clone(&cont_halt);
+            let cont_halt_ack = Arc::clone(&cont_halt_ack);
             signal_listeners.push(match msg {
-                ContOrStop::Cont => cont_listener(stream, sig, send, cont_halt),
-                ContOrStop::Stop => stop_listener(stream, sig, send, cont_halt),
+                ContOrStop::Cont => cont_listener(stream, sig, send, cont_halt, cont_halt_ack),
+                ContOrStop::Stop => stop_listener(stream, sig, send, cont_halt, cont_halt_ack),
             });
         } else {
             trace!("signal is invalid");
@@ -143,6 +145,7 @@ fn cont_listener(
     sig_kind: SignalKind,
     send: mpsc::Sender<ContOrStop>,
     halt: Arc<Notify>,
+    halt_ack: Arc<Notify>,
 ) -> JoinHandle<()> {
     task::spawn(async move {
         let span = span!(Level::TRACE, "cont_listener", sig = sig_kind.as_raw_value());
@@ -163,7 +166,7 @@ fn cont_listener(
                     trace!("received halt from stop_listener");
 
                     // make sure stop_listener is aware of this
-                    halt.notify_one();
+                    halt_ack.notify_one();
 
                     break;
                 }
@@ -177,6 +180,7 @@ fn stop_listener(
     sig_kind: SignalKind,
     send: mpsc::Sender<ContOrStop>,
     cont_halt: Arc<Notify>,
+    cont_halt_ack: Arc<Notify>,
 ) -> JoinHandle<()> {
     task::spawn(async move {
         let span = span!(Level::TRACE, "stop_listener", sig = sig_kind.as_raw_value());
@@ -194,7 +198,7 @@ fn stop_listener(
                 // guarenteed that the cont_listener won't try to send to the
                 // bar after we've dropped it
                 trace!("waiting for acknowledgement from cont_listener");
-                cont_halt.notified().await;
+                cont_halt_ack.notified().await;
 
                 // the receiver must not drop until we tell it to
                 trace!("sending stop to bar");

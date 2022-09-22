@@ -1,5 +1,8 @@
 # smolbar
 
+[![Crates.io](https://img.shields.io/crates/v/smolbar)](https://crates.io/crates/smolbar)
+[![Crates.io](https://img.shields.io/crates/l/smolbar)](https://crates.io/crates/smolbar)
+
 `smolbar` is a smol status command for [sway](https://github.com/swaywm/sway).
 
 ## milestones
@@ -7,6 +10,14 @@
 - [X] refresh configurable blocks on signals/intervals
 - [X] respond to stop and continue signals
 - [ ] support click events
+
+## installation
+
+`smolbar` is on crates.io!
+
+```console
+$ cargo install --locked smolbar
+```
 
 # configuration
 

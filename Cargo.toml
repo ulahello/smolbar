@@ -4,6 +4,7 @@ version = "0.5.1"
 authors = ["Ula Shipman <ula.hello@mailbox.org>"]
 edition = "2021"
 description = "smol status command for sway"
+homepage = "https://crates.io/crates/smolbar"
 repository = "https://github.com/ulahello/smolbar"
 license = "GPL-3.0-or-later"
 keywords = ["sway", "swaybar"]

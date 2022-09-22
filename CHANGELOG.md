@@ -6,6 +6,7 @@
 * restructured finicky shutdown code
   * if there were any strange and rare bugs, they were there, and they are now fixed
 * log time instead of uptime
+* published to crates.io
 
 ## [0.5.0] - 2022-08-08
 * switched to tracing for logging

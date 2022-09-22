@@ -321,7 +321,7 @@ impl Smolbar {
     ) {
         let span = span!(Level::TRACE, "bar_push_block");
         let _enter = span.enter();
-        if let Some(vec) = &mut *blocks.lock().await {
+        if let Some(ref mut vec) = *blocks.lock().await {
             let id = vec.len() + 1;
             trace!(id, "pushed block");
             vec.push(Block::new(block, global, refresh_send, cmd_dir, id).await);

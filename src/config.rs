@@ -69,7 +69,7 @@ impl Config {
     /// - Reading from `path` may fail
     /// - `path` contents may be invalid TOML
     #[tracing::instrument]
-    pub fn read_from_path(path: &Path) -> Result<Config, Error> {
+    pub fn read_from_path(path: &Path) -> Result<Self, Error> {
         // canonicalize path before doing anything else. this is important for
         // getting `command_dir` bc its `path`'s parent
         let path = path.canonicalize()?;

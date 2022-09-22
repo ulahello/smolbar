@@ -54,9 +54,6 @@ async fn main() -> ExitCode {
 }
 
 async fn try_main(args: Args) -> Result<(), Error> {
-    let span = span!(Level::INFO, "main");
-    let _enter = span.enter();
-
     /* print license information */
     if args.license {
         writeln!(stdout(), "{}", env!("CARGO_PKG_LICENSE"))?;

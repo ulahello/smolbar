@@ -6,7 +6,7 @@
 use tokio::select;
 use tokio::signal;
 use tokio::signal::unix::SignalKind;
-use tokio::sync::{mpsc, RwLock, RwLockReadGuard};
+use tokio::sync::{mpsc, Notify, RwLock, RwLockReadGuard};
 use tokio::task::{self, JoinHandle};
 use tokio::time::{self, Instant};
 use tracing::{error, span, trace, warn, Level};
@@ -32,13 +32,13 @@ pub struct Block {
     // be alive.
     cmd: (mpsc::Sender<bool>, JoinHandle<()>),
 
-    // `interval` sends a refresh to `cmd` on an interval. if it receives `()`, it
-    // halts.
-    interval: (mpsc::Sender<()>, JoinHandle<()>),
+    // `interval` sends a refresh to `cmd` on an interval. if it receives a
+    // notification, it halts.
+    interval: (Arc<Notify>, JoinHandle<()>),
 
     // `signal` sends a refresh to `cmd` any time it receives a certain os
-    // signal. if it receives `()`, it halts.
-    signal: (mpsc::Sender<()>, JoinHandle<()>),
+    // signal. if it receives a notification, it halts.
+    signal: (Arc<Notify>, JoinHandle<()>),
 }
 
 impl Block {
@@ -57,8 +57,8 @@ impl Block {
         let toml = Arc::new(toml);
         let body = Arc::new(RwLock::new(Body::new()));
 
-        let (sig_send, sig_recv) = mpsc::channel(1);
-        let (interval_send, interval_recv) = mpsc::channel(1);
+        let sig_halt = Arc::new(Notify::new());
+        let interval_halt = Arc::new(Notify::new());
         let (cmd_send, cmd_recv) = mpsc::channel(1);
 
         /* listen for body refresh msgs and fulfill them */
@@ -78,14 +78,14 @@ impl Block {
 
         /* refresh on an interval */
         let interval = (
-            interval_send,
-            Self::task_interval(Arc::clone(&toml), interval_recv, cmd_send.clone(), id),
+            Arc::clone(&interval_halt),
+            Self::task_interval(Arc::clone(&toml), interval_halt, cmd_send.clone(), id),
         );
 
         /* refresh on a signal */
         let signal = (
-            sig_send,
-            Self::task_signal(sig_recv, cmd_send.clone(), toml.signal, id),
+            Arc::clone(&sig_halt),
+            Self::task_signal(sig_halt, cmd_send.clone(), toml.signal, id),
         );
 
         /* initialize block */
@@ -323,7 +323,7 @@ impl Block {
 
     fn task_interval(
         toml: Arc<TomlBlock>,
-        mut interval_recv: mpsc::Receiver<()>,
+        halt: Arc<Notify>,
         cmd_send: mpsc::Sender<bool>,
         id: usize,
     ) -> JoinHandle<()> {
@@ -359,11 +359,8 @@ impl Block {
                                 }
                             }
 
-                            match time::timeout_at(deadline, interval_recv.recv()).await {
-                                Ok(halt) => {
-                                    // interval sender must not be dropped until
-                                    // it sends a halt msg.
-                                    halt.unwrap();
+                            match time::timeout_at(deadline, halt.notified()).await {
+                                Ok(()) => {
                                     // we received halt msg
                                     yes_actually_exit = true;
                                     break;
@@ -390,15 +387,14 @@ impl Block {
             }
 
             if !yes_actually_exit {
-                // wait for halt msg. the interval sender must not be dropped
-                // until it sends a halt msg.
-                interval_recv.recv().await.unwrap();
+                // wait for halt msg
+                halt.notified().await;
             }
         })
     }
 
     fn task_signal(
-        mut sig_recv: mpsc::Receiver<()>,
+        halt: Arc<Notify>,
         cmd_send: mpsc::Sender<bool>,
         signal: Option<i32>,
         id: usize,
@@ -413,9 +409,7 @@ impl Block {
                 if let Ok(mut stream) = signal::unix::signal(sig) {
                     loop {
                         select!(
-                            halt = sig_recv.recv() => {
-                                // sig sender must not be dropped until it sends halt.
-                                halt.unwrap();
+                            () = halt.notified() => {
                                 // we received halt msg
                                 yes_actually_exit = true;
                                 break;
@@ -439,7 +433,7 @@ impl Block {
 
             if !yes_actually_exit {
                 // wait for halt msg
-                sig_recv.recv().await.unwrap();
+                halt.notified().await;
             }
         })
     }
@@ -454,8 +448,8 @@ impl Block {
     pub async fn halt(self) {
         // halt interval and signal tasks. both loops must exclusively be halted
         // here.
-        task::spawn(async move { self.interval.0.send(()).await.unwrap() });
-        task::spawn(async move { self.signal.0.send(()).await.unwrap() });
+        self.interval.0.notify_one();
+        self.signal.0.notify_one();
 
         // both loops must not panic
         self.interval.1.await.unwrap();

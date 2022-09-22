@@ -1,7 +1,7 @@
 // copyright (C) 2022  Ula Shipman <ula.hello@mailbox.org>
 // licensed under GPL-3.0-or-later
 
-use std::fmt::{self, Display};
+use core::fmt::{self, Display};
 use std::io;
 
 /// Fatal errors that can occur at runtime.

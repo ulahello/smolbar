@@ -11,11 +11,11 @@ use tokio::task::{self, JoinHandle};
 use tokio::time::{self, Instant};
 use tracing::{error, span, trace, warn, Level};
 
+use core::str::{self, FromStr};
+use core::time::Duration;
 use std::path::PathBuf;
 use std::process::Command;
-use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
 
 use crate::config::TomlBlock;
 use crate::protocol::Body;
@@ -112,7 +112,7 @@ impl Block {
         id: usize,
     ) -> JoinHandle<()> {
         async fn apply_scopes(
-            mut lines: std::str::Lines<'_>,
+            mut lines: str::Lines<'_>,
             global: &Body,
             toml: &Arc<TomlBlock>,
             body: &Arc<RwLock<Body>>,

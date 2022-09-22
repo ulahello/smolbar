@@ -38,7 +38,7 @@ pub struct TomlBlock {
     /// Interval, in seconds, at which to refresh the block
     ///
     /// If the interval is negative, overflows
-    /// [`Duration`](std::time::Duration), or is not finite, it is ignored.
+    /// [`Duration`](core::time::Duration), or is not finite, it is ignored.
     pub interval: Option<f32>,
     /// Operating system signal to refresh the block when received
     pub signal: Option<i32>,

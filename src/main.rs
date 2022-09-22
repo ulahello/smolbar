@@ -6,16 +6,18 @@
 
 use clap::Parser;
 use dirs::config_dir;
-use tokio::signal::unix::{signal, SignalKind};
-use tokio::sync::{broadcast, mpsc};
-use tokio::{select, task};
+use tokio::select;
+use tokio::signal::unix::{signal, Signal, SignalKind};
+use tokio::sync::{mpsc, Notify};
+use tokio::task::{self, JoinHandle};
 use tracing::{error, info, span, trace, Level};
 
 use std::io::{stderr, stdout, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::sync::Arc;
 
-use smolbar::bar::{ContOrStop, Smolbar, Status};
+use smolbar::bar::{ContOrStop, Smolbar};
 use smolbar::config::Config;
 use smolbar::protocol::Header;
 use smolbar::Error;
@@ -82,8 +84,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
 
     /* prepare to send continue and stop msgs to bar */
     let (cont_stop_send, cont_stop_recv) = mpsc::channel(1);
-    let (sig_halt_send, _) = broadcast::channel(1);
-
+    let cont_halt = Arc::new(Notify::new());
     let mut signal_listeners = Vec::with_capacity(2);
 
     for (sig, msg, name) in [
@@ -111,77 +112,100 @@ async fn try_main(args: Args) -> Result<(), Error> {
 
         let sig = SignalKind::from_raw(sig);
 
-        if let Ok(mut stream) = signal(sig) {
+        if let Ok(stream) = signal(sig) {
             trace!("signal is valid, listening");
 
-            let mut halt_recv = sig_halt_send.subscribe();
             let send = cont_stop_send.clone();
-
-            let task = task::spawn(async move {
-                let span = span!(
-                    Level::TRACE,
-                    "signal_listen",
-                    name,
-                    sig = sig.as_raw_value()
-                );
-
-                loop {
-                    // the halt sender could send halt, which doesnt block until
-                    // the msg is received. before the msg reaches the halt
-                    // branch, a signal could arrive, causing the stream branch
-                    // to run. at this point, the bar is permitted to be dropped
-                    // because it has sent all of its halt messages. if the
-                    // stream branch tries to send a message to the bar's signal
-                    // receiver while the bar is dropped, its invariant is
-                    // violated. due to this, we must check that the bar is not
-                    // dropped before sending.
-
-                    // halt may arrive while waiting for signal
-                    select!(
-                        stream = stream.recv() => {
-                            if stream.is_some() && Status::get() != Status::Dropped {
-                                let _enter = span.enter();
-                                trace!("received signal");
-
-                                // the receiver must not be dropped until
-                                // the halt branch on this select! is
-                                // reached.
-                                send.send(msg).await.unwrap();
-                            }
-                        }
-
-                        halt = halt_recv.recv() => {
-                            // the sender must not be dropped until it sends a
-                            // halt msg.
-                            halt.unwrap();
-
-                            let _enter = span.enter();
-                            trace!("signal listener shutting down");
-                            break;
-                        }
-                    );
-                }
+            let cont_halt = Arc::clone(&cont_halt);
+            signal_listeners.push(match msg {
+                ContOrStop::Cont => cont_listener(stream, sig, send, cont_halt),
+                ContOrStop::Stop => stop_listener(stream, sig, send, cont_halt),
             });
-
-            signal_listeners.push(task);
         } else {
             trace!("signal is invalid");
         }
     }
 
     /* read bar from config */
-    let bar = Smolbar::new(config, cont_stop_recv, sig_halt_send)
-        .await
-        // only 1 bar must ever be constructed.
-        .unwrap();
+    let bar = Smolbar::new(config, cont_stop_recv).await;
 
     /* start printing and updating blocks */
     bar.run().await?;
 
     /* wait for signal listeners to halt */
+    trace!("waiting for signal listeners to halt");
     for task in signal_listeners {
         task.await.unwrap();
     }
 
     Ok(())
+}
+
+fn cont_listener(
+    mut signal: Signal,
+    sig_kind: SignalKind,
+    send: mpsc::Sender<ContOrStop>,
+    halt: Arc<Notify>,
+) -> JoinHandle<()> {
+    task::spawn(async move {
+        let span = span!(Level::TRACE, "cont_listener", sig = sig_kind.as_raw_value());
+        loop {
+            select!(
+                sig = signal.recv() => {
+                    if sig.is_some() {
+                        let _enter = span.enter();
+                        trace!("received signal");
+
+                        // while this task is alive, the bar must be alive.
+                        send.send(ContOrStop::Cont).await.unwrap();
+                    }
+                }
+
+                () = halt.notified() => {
+                    let _enter = span.enter();
+                    trace!("received halt from stop_listener");
+
+                    // make sure stop_listener is aware of this
+                    halt.notify_one();
+
+                    break;
+                }
+            );
+        }
+    })
+}
+
+fn stop_listener(
+    mut signal: Signal,
+    sig_kind: SignalKind,
+    send: mpsc::Sender<ContOrStop>,
+    cont_halt: Arc<Notify>,
+) -> JoinHandle<()> {
+    task::spawn(async move {
+        let span = span!(Level::TRACE, "stop_listener", sig = sig_kind.as_raw_value());
+        loop {
+            if signal.recv().await.is_some() {
+                let _enter = span.enter();
+                trace!("received signal");
+
+                // we have to stop cont_listener; it cannot be allowed to send
+                // messages to bar bc we're about to drop it
+                trace!("requesting cont_listener halt");
+                cont_halt.notify_one();
+
+                // its crucial to wait for acknowledgement here, so we are
+                // guarenteed that the cont_listener won't try to send to the
+                // bar after we've dropped it
+                trace!("waiting for acknowledgement from cont_listener");
+                cont_halt.notified().await;
+
+                // the receiver must not drop until we tell it to
+                trace!("sending stop to bar");
+                send.send(ContOrStop::Stop).await.unwrap();
+
+                // we're halting now!
+                break;
+            }
+        }
+    })
 }

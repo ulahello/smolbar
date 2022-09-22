@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+* restructured finicky shutdown code
+  * if there were any strange and rare bugs, they were there, and they are now fixed
 * log time instead of uptime
 
 ## [0.5.0] - 2022-08-08

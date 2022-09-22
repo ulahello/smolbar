@@ -4,54 +4,18 @@
 //! Defines a runtime bar.
 
 use serde_json::ser;
-use tokio::sync::{broadcast, mpsc, Mutex};
+use tokio::sync::{mpsc, Mutex};
 use tokio::{select, task};
 use tracing::{error, info, span, trace, Level};
 
 use std::io::{stdout, BufWriter, Write};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 
 use crate::block::Block;
 use crate::config::{Config, TomlBlock};
 use crate::protocol::Body;
 use crate::Error;
-
-static BAR_STATUS: AtomicU8 = AtomicU8::new(0);
-
-/// Status of the current bar.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Status {
-    /// The bar doesn't exist, it hasn't been constructed yet
-    NotConstructed = 0,
-    /// The bar has been constructed. It may not be initialized with blocks.
-    Constructed = 1,
-    /// The bar is no longer capable of responding to messages. It may be
-    /// dropped, but it also may still be alive and on its way to being dropped.
-    Dropped = 2,
-}
-
-impl Status {
-    /// Get the status of the current bar.
-    #[must_use]
-    pub fn get() -> Self {
-        Self::from_raw(BAR_STATUS.load(Ordering::SeqCst))
-    }
-
-    fn swap(val: Self) -> Self {
-        Self::from_raw(BAR_STATUS.swap(val as u8, Ordering::SeqCst))
-    }
-
-    fn from_raw(val: u8) -> Self {
-        match val {
-            0 => Self::NotConstructed,
-            1 => Self::Constructed,
-            2 => Self::Dropped,
-            _ => unreachable!("invalid bar status"),
-        }
-    }
-}
 
 // TODO: Smolbar is a /lil/ bit silly? its only instantiated once, but is
 // written so u can instantiate multiple (tho it panics). it /would/ make sense
@@ -68,10 +32,7 @@ pub struct Smolbar {
     // blocks must never be both unlocked and None
     blocks: Arc<Mutex<Option<Vec<Block>>>>,
 
-    // sender is somewhere outside this struct. to safely drop the bar, we tell
-    // that sender to halt through cont_stop_send_halt.
     cont_stop_recv: mpsc::Receiver<ContOrStop>,
-    cont_stop_send_halt: broadcast::Sender<()>,
 
     // the receiver is kept alive as long as it receives true.
     refresh_recv: mpsc::Receiver<bool>,
@@ -87,17 +48,9 @@ impl Smolbar {
     /// send either [`Cont`](ContOrStop::Cont) or [`Stop`](ContOrStop::Stop)
     /// accordingly.
     #[allow(clippy::missing_panics_doc)]
-    pub async fn new(
-        config: Config,
-        cont_stop_recv: mpsc::Receiver<ContOrStop>,
-        cont_stop_send_halt: broadcast::Sender<()>,
-    ) -> Option<Self> {
+    pub async fn new(config: Config, cont_stop_recv: mpsc::Receiver<ContOrStop>) -> Self {
         let span = span!(Level::TRACE, "bar_new");
         let _enter = span.enter();
-
-        if Status::swap(Status::Constructed) != Status::NotConstructed {
-            return None;
-        }
 
         // initialize bar without any blocks
         let (refresh_send, refresh_recv) = mpsc::channel(1);
@@ -108,7 +61,6 @@ impl Smolbar {
             config,
             blocks,
             cont_stop_recv,
-            cont_stop_send_halt,
             refresh_recv,
             refresh_send,
         };
@@ -125,7 +77,7 @@ impl Smolbar {
             .await;
         }
 
-        Some(bar)
+        bar
     }
 
     /// Send the configured [`Header`](crate::protocol::Header) through standard
@@ -331,11 +283,6 @@ impl Smolbar {
                     let _enter = span.enter();
 
                     /* we received stop signal */
-                    // the bar is no longer capable of receiving messages
-                    if Status::swap(Status::Dropped) != Status::Constructed {
-                        unreachable!("bar status must be Constructed before it is Dropped");
-                    }
-
                     trace!("received msg");
 
                     // halt each block. we do this first because blocks expect
@@ -356,11 +303,6 @@ impl Smolbar {
                     trace!("waiting for refresh loop to halt");
                     // refresh loop must not panic
                     refresh.await.unwrap();
-
-                    // tell the senders attached to cont/stop recv to halt.
-                    // after this, we must not recv() on self.cont_stop_recv.
-                    // the signal loop must not halt until it receives halt.
-                    self.cont_stop_send_halt.send(()).unwrap();
 
                     break;
                 }

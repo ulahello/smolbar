@@ -17,13 +17,6 @@ use crate::config::{Config, TomlBlock};
 use crate::protocol::Body;
 use crate::Error;
 
-// TODO: Smolbar is a /lil/ bit silly? its only instantiated once, but is
-// written so u can instantiate multiple (tho it panics). it /would/ make sense
-// inlined in main.rs (the program is `smolbar`). having this be a struct is
-// kinda `public class HelloSwaybarApp`. but, theres friction there too because
-// of Smolbar::push_block being used in multiple places. it's not entirely
-// inlinable
-
 /// Configured bar at runtime.
 #[derive(Debug)]
 pub struct Smolbar {

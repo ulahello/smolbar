@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.5.2] - 2022-09-23
 * blank config file is now valid
   * config no longer requires `header` table or `block` table array to be explicitly defined
 * fixed bug where block wouldn't update unless `local::command` was defined

@@ -17,12 +17,13 @@ use crate::Error;
 pub struct TomlBar {
     command_dir: Option<String>,
     /// Configured [`Header`]
+    #[serde(default = "Header::default")]
     pub header: Header,
     /// [`Body`] configured at `global` scope
     #[serde(flatten)]
     pub body: Body,
     /// The bar's configured [blocks](TomlBlock)
-    #[serde(rename = "block")]
+    #[serde(default = "Vec::new", rename = "block")]
     pub blocks: Vec<TomlBlock>,
 }
 

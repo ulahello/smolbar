@@ -251,11 +251,18 @@ impl Block {
             };
         }
 
-        // initialize block body according to local and global scope
-        apply_scopes("".lines(), &global, &toml, &body).await;
+        async fn ping_bar(bar_refresh: &mpsc::Sender<bool>) {
+            // the refresh receiver must not be dropped until cmd receives halt.
+            bar_refresh.send(true).await.unwrap();
+            trace!("refresh requested");
+        }
 
         // respond to refresh requests
         task::spawn(async move {
+            // initialize block body according to local and global scope
+            apply_scopes("".lines(), &global, &toml, &body).await;
+            ping_bar(&bar_refresh).await;
+
             // senders must not be dropped until cmd_recv receives `false`.
             while cmd_recv.recv().await.unwrap() {
                 if let Some(ref toml_command) = toml.command {
@@ -306,11 +313,8 @@ impl Block {
                             // command succeeded
                             apply_scopes(lines, &global, &toml, &body).await;
 
-                            // ping parent bar to let know we are refreshed. the
-                            // refresh receiver must not be dropped until cmd
-                            // receives halt.
-                            bar_refresh.send(true).await.unwrap();
-                            trace!("refresh requested");
+                            // ping parent bar to let know we are refreshed
+                            ping_bar(&bar_refresh).await;
                         }
                     );
                 } else {

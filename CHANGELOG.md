@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* fixed bug where block wouldn't update unless `local::command` was defined
 * added more examples and explanation to README
 
 ## [0.5.1] - 2022-09-21

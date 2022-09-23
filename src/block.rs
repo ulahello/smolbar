@@ -9,7 +9,7 @@ use tokio::signal::unix::SignalKind;
 use tokio::sync::{mpsc, Notify, RwLock, RwLockReadGuard};
 use tokio::task::{self, JoinHandle};
 use tokio::time::{self, Instant};
-use tracing::{error, span, trace, warn, Level};
+use tracing::{error, span, trace, warn, Instrument, Level};
 
 use core::str::{self, FromStr};
 use core::time::Duration;
@@ -261,7 +261,14 @@ impl Block {
         task::spawn(async move {
             // initialize block body according to local and global scope
             apply_scopes("".lines(), &global, &toml, &body).await;
-            ping_bar(&bar_refresh).await;
+            {
+                let span = span!(Level::TRACE, "block_body_init", id, command = toml.command);
+                async {
+                    ping_bar(&bar_refresh).await;
+                }
+                .instrument(span)
+                .await;
+            }
 
             // senders must not be dropped until cmd_recv receives `false`.
             while cmd_recv.recv().await.unwrap() {

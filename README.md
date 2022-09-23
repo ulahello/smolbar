@@ -21,6 +21,8 @@ $ cargo install --locked smolbar
 
 # configuration
 
+`smolbar` is configured through a `TOML` file.
+
 if `--config` is not specified, `smolbar` looks for the toml configuration file at `~/.config/smolbar/config.toml`.
 
 for an example of a configuration, see the [examples](./examples).
@@ -30,6 +32,12 @@ for an example of a configuration, see the [examples](./examples).
 the header first sent to sway can be configured in the `header` table.
 it inherets all keys from the `Header` JSON object defined in `swaybar-protocol(7)`.
 
+```toml
+[header]
+cont_signal = 18 # default value
+stop_signal = 2  # SIGINT
+```
+
 ## blocks
 
 there are three scopes which can be used to configure individual blocks.
@@ -37,29 +45,48 @@ each scope has a level of control over the `Body`s of blocks: `immediate` has th
 
 ### global
 
-`global` inherets all keys from the `Body` JSON object defined in `swaybar-protocol(7)`.
+the `global` scope is configured at the root level of the config file.
 
 | key         | description                                  |
 |-------------|----------------------------------------------|
-| command_dir | sets the path to execute `command(local)` in |
+| command_dir | sets the path to execute `local::command` in |
+
+`global` also inherets all the keys in the `Body` JSON object defined in `swaybar-protocol(7)`.
+
+```toml
+# global
+full_text = "u only see this in a block if no other scopes define full_text"
+
+[[block]]
+# local
+full_text = "never see global full_text"
+```
 
 ### local
 
-all local blocks are tables in the table array `block`.
+all `local` blocks are tables in the table array `block`.
 
-`local` inherets all keys from the `Body` JSON object defined in `swaybar-protocol(7)`.
+| key      | description                                         |
+|----------|-----------------------------------------------------|
+| command  | command to execute for `immediate` configuration    |
+| prefix   | string prefixing `full_text`                        |
+| postfix  | string appended to `full_text`                      |
+| interval | interval, in seconds, at which to refresh the block |
+| signal   | os signal to refresh the block when received        |
 
-| key      | description                                                 |
-|----------|-------------------------------------------------------------|
-| command  | (optional) command to execute for `immediate` configuration |
-| prefix   | string prefixing `full_text`                                |
-| postfix  | string appended to `full_text`                              |
-| interval | interval, in seconds, at which to refresh the block         |
-| signal   | os signal to refresh the block when received                |
+`local` inherets all other keys from the `Body` JSON object defined in `swaybar-protocol(7)`.
+
+```toml
+[[block]]
+# this block displays the date, updating every second
+command = "date" # assuming date coreutil is in $PATH
+prefix = "Date: "
+interval = 1
+```
 
 ### immediate
 
-each line of `command(local)`'s standard output is parsed in order as a field of the `Body` JSON object defined in `swaybar-protocol(7)`.
+each line of `local::command`'s standard output is parsed in order as a field of the `Body` JSON object defined in `swaybar-protocol(7)`.
 
 for example, suppose the following script was a block's command:
 

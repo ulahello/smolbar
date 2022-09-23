@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* added more examples and explanation to README
 
 ## [0.5.1] - 2022-09-21
 * restructured finicky shutdown code

@@ -1,6 +1,7 @@
 # changelog
 
 ## [unreleased]
+* fixed shutdown hang when `stop_signal` is valid but `cont_signal` isn't
 
 ## [0.5.2] - 2022-09-23
 * blank config file is now valid

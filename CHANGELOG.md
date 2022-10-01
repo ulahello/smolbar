@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.5.3] - 2022-10-01
 * fixed shutdown hang when `stop_signal` is valid but `cont_signal` isn't
 * updated to `clap` v4
 

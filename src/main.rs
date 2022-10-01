@@ -124,10 +124,10 @@ async fn try_main(args: Args) -> Result<(), Error> {
             warn!("signal is invalid");
             let cont_halt = Arc::clone(&cont_halt);
             let cont_halt_ack = Arc::clone(&cont_halt_ack);
-            signal_listeners.push(match msg {
-                ContOrStop::Cont => cont_shim(sig, cont_halt, cont_halt_ack),
-                ContOrStop::Stop => stop_shim(),
-            });
+            match msg {
+                ContOrStop::Cont => signal_listeners.push(cont_shim(sig, cont_halt, cont_halt_ack)),
+                ContOrStop::Stop => (), // no valid stop signal, so graceful shutdown is not an option
+            }
         }
     }
 
@@ -229,11 +229,5 @@ fn cont_shim(sig_kind: SignalKind, halt: Arc<Notify>, halt_ack: Arc<Notify>) -> 
 
         // make sure sender is aware of this
         halt_ack.notify_one();
-    })
-}
-
-fn stop_shim() -> JoinHandle<()> {
-    task::spawn(async move {
-        // no valid stop signal, so graceful shutdown is not an option
     })
 }

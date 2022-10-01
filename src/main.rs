@@ -10,7 +10,7 @@ use tokio::select;
 use tokio::signal::unix::{signal, Signal, SignalKind};
 use tokio::sync::{mpsc, Notify};
 use tokio::task::{self, JoinHandle};
-use tracing::{error, info, span, trace, Level};
+use tracing::{error, info, span, trace, warn, Level};
 
 use std::io::{stderr, stdout, Write};
 use std::path::PathBuf;

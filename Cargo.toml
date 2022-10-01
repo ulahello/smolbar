@@ -11,7 +11,7 @@ keywords = ["sway", "swaybar"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-clap = { version = "3", features = ["derive"] }
+clap = { version = "4", features = ["derive"] }
 dirs = "4"
 libc = "0"
 serde = "1"

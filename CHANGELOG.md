@@ -1,72 +1,108 @@
 # changelog
 
 ## [unreleased]
+### changed
 * updated dependencies
 * specified dependencies more precisely in `Cargo.toml`
 * specified rust-version as `1.60`
 
 ## [0.5.3] - 2022-10-01
-* fixed shutdown hang when `stop_signal` is valid but `cont_signal` isn't
+### changed
 * updated to `clap` v4
 
+### fixed
+* fixed shutdown hang when `stop_signal` is valid but `cont_signal` isn't
+
 ## [0.5.2] - 2022-09-23
+### added
+* added more examples and explanation to README
+
+### fixed
 * blank config file is now valid
   * config no longer requires `header` table or `block` table array to be explicitly defined
 * fixed bug where block wouldn't update unless `local::command` was defined
-* added more examples and explanation to README
 
 ## [0.5.1] - 2022-09-21
-* restructured finicky shutdown code
-  * if there were any strange and rare bugs, they were there, and they are now fixed
-* log time instead of uptime
 * published to crates.io
 
+### changed
+* log time instead of uptime
+
+### fixed
+* restructured finicky shutdown code
+  * if there were any strange and rare bugs, they were there, and they are now fixed
+
 ## [0.5.0] - 2022-08-08
+### changed
 * switched to tracing for logging
+
+### fixed
 * fixed extremely unlikely invalid state
 
 ## [0.4.2] - 2022-08-02
+### added
 * feat: added source of log to logs
 * feat: log which block requests a refresh
+
+### fixed
 * fixed several potential panics
 
 ## [0.4.1] - 2022-07-21
+### fixed
 * fix: improved interval precision
   * uses deadline instead of duration, so time won't drift
 * fixed zero intervals freezing up program
 
 ## [0.4.0] - 2022-07-14
+### added
 * feat: make command optional
 * feat: refer to blocks with IDs instead of by command
 
 ## [0.3.3] - 2022-07-13
-* fixed block not updating if command fails
+### changed
 * changed command_dir log level to info
 
+### fixed
+* fixed block not updating if command fails
+
 ## [0.3.2] - 2022-06-28
-* fixed missing error message for fatal errors
+### added
 * feat: log command_dir
+
+### changed
 * improved `--config` help message
 
+### fixed
+* fixed missing error message for fatal errors
+
 ## [0.3.1] - 2022-06-28
+### fixed
 * fixed incorrect command_dir
   * previously the configuration path wasn't canonicalized
 * fixed trace log from dependency showing on program end
 * fixed fatal errors not having timestamps
 
 ## [0.3.0] - 2022-06-08
+### added
 * added support for floating point intervals
 
 ## [0.2.0] - 2022-06-08
+### added
 * added crate documentation
 * added timestamps to logs
+
+### fixed
 * fixed slow shutdown with slow command
 * fixed incorrect documentation in README
 
 ## [0.1.1] - 2022-06-04
-* fixed panic when receiving continue signal and stop signal simultaneously
+### changed
 * improved portability of exit code
 
+### fixed
+* fixed panic when receiving continue signal and stop signal simultaneously
+
 ## [0.1.0] - 2022-06-02
+### added
 * feat: refresh configurable blocks on signals/intervals
 * feat: add `--config` & `--license` cli flags

@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.5.4] - 2022-10-16
 ### changed
 * updated dependencies
 * specified dependencies more precisely in `Cargo.toml`

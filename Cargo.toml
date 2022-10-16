@@ -3,6 +3,7 @@ name = "smolbar"
 version = "0.5.3"
 authors = ["Ula Shipman <ula.hello@mailbox.org>"]
 edition = "2021"
+rust-version = "1.60"
 description = "smol status command for sway"
 homepage = "https://crates.io/crates/smolbar"
 repository = "https://github.com/ulahello/smolbar"

@@ -33,17 +33,6 @@ impl Header {
     /// Default value of [`Header::stop_signal`].
     pub const DEFAULT_STOP_SIG: i32 = SIGSTOP;
 
-    /// Returns a new [`Header`] with all optional fields blank.
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            version: Self::DEFAULT_VERSION,
-            click_events: None,
-            cont_signal: None,
-            stop_signal: None,
-        }
-    }
-
     const fn default_version() -> i32 {
         Self::DEFAULT_VERSION
     }

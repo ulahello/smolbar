@@ -3,6 +3,15 @@
 
 #![forbid(unsafe_code)]
 #![warn(clippy::pedantic, clippy::cargo)]
+#![feature(duration_checked_float)]
+
+mod bar;
+mod block;
+mod config;
+mod error;
+mod protocol;
+
+use error::Error;
 
 use clap::Parser;
 use dirs::config_dir;
@@ -17,10 +26,9 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use smolbar::bar::{ContOrStop, Smolbar};
-use smolbar::config::Config;
-use smolbar::protocol::Header;
-use smolbar::Error;
+use crate::bar::{ContOrStop, Smolbar};
+use crate::config::Config;
+use crate::protocol::Header;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]

@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+### changed
+* changed to only have bin (no bin + lib)
 
 ## [0.5.4] - 2022-10-16
 ### changed

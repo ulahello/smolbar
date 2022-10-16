@@ -1,6 +1,9 @@
 # changelog
 
 ## [unreleased]
+* updated dependencies
+* specified dependencies more precisely in `Cargo.toml`
+* specified rust-version as `1.60`
 
 ## [0.5.3] - 2022-10-01
 * fixed shutdown hang when `stop_signal` is valid but `cont_signal` isn't

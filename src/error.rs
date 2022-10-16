@@ -16,7 +16,7 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
-            Self::Io(error) => write!(f, "{}", error)?,
+            Self::Io(error) => write!(f, "{error}")?,
             Self::NoConfig => write!(
                 f,
                 "no configuration path found (try passing one with `--config`)"

@@ -21,7 +21,7 @@ $ cargo install --locked smolbar
 
 # configuration
 
-`smolbar` is configured through a `TOML` file.
+`smolbar` is configured through a TOML file.
 
 if `--config` is not specified, `smolbar` looks for the toml configuration file at `~/.config/smolbar/config.toml`.
 
@@ -30,7 +30,7 @@ for an example of a configuration, see the [examples](./examples).
 ## header
 
 the header first sent to sway can be configured in the `header` table.
-it inherets all keys from the `Header` JSON object defined in `swaybar-protocol(7)`.
+it inherits all keys from the `Header` JSON object defined in `swaybar-protocol(7)`.
 
 ```toml
 [header]
@@ -41,7 +41,7 @@ stop_signal = 2  # SIGINT
 ## blocks
 
 there are three scopes which can be used to configure individual blocks.
-each scope has a level of control over the `Body`s of blocks: `immediate` has the highest precidence, then `local`, then `global`.
+each scope has a level of control over each block's `Body`: `immediate` has the highest precedence, then `local`, then `global`.
 
 ### global
 
@@ -51,7 +51,7 @@ the `global` scope is configured at the root level of the config file.
 |-------------|----------------------------------------------|
 | command_dir | sets the path to execute `local::command` in |
 
-`global` also inherets all the keys in the `Body` JSON object defined in `swaybar-protocol(7)`.
+`global` also inherits all the keys in the `Body` JSON object defined in `swaybar-protocol(7)`.
 
 ```toml
 # global
@@ -72,9 +72,9 @@ all `local` blocks are tables in the table array `block`.
 | prefix   | string prefixing `full_text`                        |
 | postfix  | string appended to `full_text`                      |
 | interval | interval, in seconds, at which to refresh the block |
-| signal   | os signal to refresh the block when received        |
+| signal   | OS signal to refresh the block when received        |
 
-`local` inherets all other keys from the `Body` JSON object defined in `swaybar-protocol(7)`.
+`local` inherits all other keys from the `Body` JSON object defined in `swaybar-protocol(7)`.
 
 ```toml
 [[block]]

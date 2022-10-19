@@ -1,8 +1,11 @@
 # changelog
 
 ## [unreleased]
+
+## [0.5.5] - 2022-10-18
 ### changed
 * changed to only have bin (no bin + lib)
+  * not considering this breaking because this is intended to be used as a binary
 
 ### fixed
 * mistakes in `README.md`

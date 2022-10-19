@@ -4,6 +4,9 @@
 ### changed
 * changed to only have bin (no bin + lib)
 
+### fixed
+* mistakes in `README.md`
+
 ## [0.5.4] - 2022-10-16
 ### changed
 * updated dependencies

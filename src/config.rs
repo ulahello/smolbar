@@ -14,6 +14,7 @@ use crate::Error;
 
 /// Bar configuration, directly deserialized.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct TomlBar {
     command_dir: Option<String>,
     /// Configured [`Header`]
@@ -29,6 +30,7 @@ pub struct TomlBar {
 
 /// Block configuration, directly deserialized.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct TomlBlock {
     /// Command to execute to configure body at `immediate` scope
     pub command: Option<String>,

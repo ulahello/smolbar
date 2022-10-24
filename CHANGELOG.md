@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+### changed
+* **BREAKING:** deny unused fields in config
 
 ## [0.5.5] - 2022-10-18
 ### changed

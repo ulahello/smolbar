@@ -10,6 +10,7 @@ use core::str::FromStr;
 
 /// Header object as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Header {
     /// "The protocol version to use. Currently, this must be 1"
     #[serde(default = "Header::default_version")]
@@ -51,6 +52,7 @@ impl Default for Header {
 
 /// Body element as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Body {
     /// "The text that will be displayed. If missing, the block will be skipped."
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -171,6 +173,7 @@ impl Default for Body {
 /// [Body alignment](Body::align), as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
+#[serde(deny_unknown_fields)]
 pub enum Align {
     /// Left alignment
     Left,
@@ -196,6 +199,7 @@ impl FromStr for Align {
 /// [Body markup](Body::markup), as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
+#[serde(deny_unknown_fields)]
 pub enum Markup {
     /// Use [Pango markup](https://docs.gtk.org/Pango/pango_markup.html)
     Pango,
@@ -217,6 +221,7 @@ impl FromStr for Markup {
 
 /// Click event, as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct ClickEvent {
     /// "The name of the block, if set"
     pub name: Option<String>,

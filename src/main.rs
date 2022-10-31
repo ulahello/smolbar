@@ -3,7 +3,6 @@
 
 #![forbid(unsafe_code)]
 #![warn(clippy::pedantic, clippy::cargo)]
-#![feature(duration_checked_float)]
 
 mod bar;
 mod block;

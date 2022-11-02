@@ -31,6 +31,13 @@ use crate::protocol::Header;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
+#[clap(help_template(
+    "{before-help}{name} {version}
+{author-with-newline}{about-with-newline}
+{usage-heading} {usage}
+
+{all-args}{after-help}"
+))]
 struct Args {
     /// Path to the configuration file
     ///

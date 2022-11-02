@@ -4,6 +4,9 @@
 ### changed
 * **BREAKING:** deny unused fields in config
 
+### fixed
+* fixed `--help` not showing author and version
+
 ## [0.5.5] - 2022-10-18
 ### changed
 * changed to only have bin (no bin + lib)

@@ -1,6 +1,9 @@
 # changelog
 
 ## [unreleased]
+### changed
+* bumped MSRV to 1.66.0 stable
+* updated dependencies
 
 ## [0.6.0] - 2022-11-01
 ### changed

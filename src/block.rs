@@ -298,13 +298,21 @@ impl Block {
                             let _enter = span.enter();
 
                             let immediate = match try_output {
-                                Ok(output) => if let Ok(utf8) = String::from_utf8(output.stdout) {
-                                    Some(utf8)
-                                } else {
-                                    error!(
-                                        "command produced invalid utf8",
-                                    );
-                                    None
+                                Ok(output) => {
+                                    if !output.status.success() {
+                                        warn!(
+                                            code = output.status.code(),
+                                            "command exited with failure",
+                                        );
+                                    }
+                                    if let Ok(utf8) = String::from_utf8(output.stdout) {
+                                        Some(utf8)
+                                    } else {
+                                        error!(
+                                            "command produced invalid utf8",
+                                        );
+                                        None
+                                    }
                                 }
                                 Err(error) => {
                                     error!("command error: {}", error);

@@ -2,6 +2,7 @@
 
 ## [unreleased]
 ### changed
+* use `anyhow` for error handling
 * warns whenever command exits with nonzero exit code
 * bumped MSRV to 1.66.0 stable
 * updated dependencies

@@ -3,6 +3,7 @@
 
 //! Configuration structures for the bar and its blocks.
 
+use anyhow::Context;
 use serde_derive::{Deserialize, Serialize};
 use tracing::{info, trace};
 
@@ -10,7 +11,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::protocol::{Body, Header};
-use crate::Error;
 
 /// Bar configuration, directly deserialized.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -72,12 +72,16 @@ impl Config {
     /// - Reading from `path` may fail
     /// - `path` contents may be invalid TOML
     #[tracing::instrument]
-    pub fn read_from_path(path: &Path) -> Result<Self, Error> {
+    pub fn read_from_path(path: &Path) -> anyhow::Result<Self> {
         // canonicalize path before doing anything else. this is important for
         // getting `command_dir` bc its `path`'s parent
-        let path = path.canonicalize()?;
+        let path = path
+            .canonicalize()
+            .with_context(|| "failed to canonicalize config path")?;
 
-        let toml: TomlBar = toml::from_str(&fs::read_to_string(&path)?)?;
+        let toml: TomlBar = toml::from_str(
+            &fs::read_to_string(&path).with_context(|| "failed to read config to utf-8 string")?,
+        )?;
 
         // command_dir is either the config's parent path or whatever is
         // specified in toml
@@ -94,7 +98,9 @@ impl Config {
             path = command_dir.display().to_string(),
             "canonicalizing command_dir",
         );
-        command_dir = command_dir.canonicalize()?;
+        command_dir = command_dir
+            .canonicalize()
+            .with_context(|| "failed to canonicalize command_dir")?;
 
         info!(path = command_dir.display().to_string(), "set command_dir");
 

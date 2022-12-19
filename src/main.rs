@@ -7,11 +7,9 @@
 mod bar;
 mod block;
 mod config;
-mod error;
 mod protocol;
 
-use error::Error;
-
+use anyhow::Context;
 use clap::Parser;
 use dirs::config_dir;
 use tokio::select;
@@ -60,14 +58,19 @@ async fn main() -> ExitCode {
         .init();
 
     if let Err(err) = try_main(Args::parse()).await {
-        error!("{}", err);
+        // TODO: odd to use structured logging that gives context to logs
+        // without context by separating each cause its own info log
+        error!("{err}");
+        err.chain()
+            .skip(1)
+            .for_each(|cause| info!("because: {cause}"));
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS
     }
 }
 
-async fn try_main(args: Args) -> Result<(), Error> {
+async fn try_main(args: Args) -> anyhow::Result<()> {
     /* print license information */
     if args.license {
         writeln!(stdout(), "{}", env!("CARGO_PKG_LICENSE"))?;
@@ -83,7 +86,9 @@ async fn try_main(args: Args) -> Result<(), Error> {
                 fallback.push("config.toml");
                 fallback
             } else {
-                return Err(Error::NoConfig);
+                return Err(anyhow::anyhow!(
+                    "no configuration path found (try passing one with `--config`)"
+                ));
             }
         }
     };
@@ -91,7 +96,7 @@ async fn try_main(args: Args) -> Result<(), Error> {
     info!(path = path.display().to_string(), "set config path");
 
     /* load configuration */
-    let config = Config::read_from_path(&path)?;
+    let config = Config::read_from_path(&path).with_context(|| "failed to load config")?;
 
     /* prepare to send continue and stop msgs to bar */
     let (cont_stop_send, cont_stop_recv) = mpsc::channel(1);

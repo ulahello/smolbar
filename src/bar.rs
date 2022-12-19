@@ -3,6 +3,7 @@
 
 //! Defines a runtime bar.
 
+use anyhow::Error;
 use serde_json::ser;
 use tokio::sync::{mpsc, Mutex};
 use tokio::{select, task};
@@ -15,7 +16,6 @@ use std::sync::Arc;
 use crate::block::Block;
 use crate::config::{Config, TomlBlock};
 use crate::protocol::Body;
-use crate::Error;
 
 /// Configured bar at runtime.
 #[derive(Debug)]
@@ -79,7 +79,7 @@ impl Smolbar {
     /// # Errors
     ///
     /// Writing to standard output may fail.
-    fn init(&self) -> Result<(), Error> {
+    fn init(&self) -> anyhow::Result<()> {
         let span = span!(
             Level::TRACE,
             "bar_init",

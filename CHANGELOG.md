@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.6.1] - 2022-12-18
 ### changed
 * use `anyhow` for error handling
 * warns whenever command exits with nonzero exit code

@@ -77,10 +77,10 @@ impl Config {
         // getting `command_dir` bc its `path`'s parent
         let path = path
             .canonicalize()
-            .with_context(|| "failed to canonicalize config path")?;
+            .context("failed to canonicalize config path")?;
 
         let toml: TomlBar = toml::from_str(
-            &fs::read_to_string(&path).with_context(|| "failed to read config to utf-8 string")?,
+            &fs::read_to_string(&path).context("failed to read config to utf-8 string")?,
         )?;
 
         // command_dir is either the config's parent path or whatever is
@@ -100,7 +100,7 @@ impl Config {
         );
         command_dir = command_dir
             .canonicalize()
-            .with_context(|| "failed to canonicalize command_dir")?;
+            .context("failed to canonicalize command_dir")?;
 
         info!(path = command_dir.display().to_string(), "set command_dir");
 

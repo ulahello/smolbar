@@ -96,7 +96,7 @@ async fn try_main(args: Args) -> anyhow::Result<()> {
     info!(path = path.display().to_string(), "set config path");
 
     /* load configuration */
-    let config = Config::read_from_path(&path).with_context(|| "failed to load config")?;
+    let config = Config::read_from_path(&path).context("failed to load config")?;
 
     /* prepare to send continue and stop msgs to bar */
     let (cont_stop_send, cont_stop_recv) = mpsc::channel(1);

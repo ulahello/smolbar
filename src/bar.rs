@@ -1,4 +1,4 @@
-// copyright (C) 2022  Ula Shipman <ula.hello@mailbox.org>
+// copyright (C) 2022-2023 Ula Shipman <ula.hello@mailbox.org>
 // licensed under GPL-3.0-or-later
 
 //! Defines a runtime bar.
@@ -210,7 +210,6 @@ impl Smolbar {
         });
 
         /* listen for cont and stop */
-        // TODO: header isn't (nor can be) resent when reloading
         loop {
             // cont_stop sender must not be dropped until it sends
             // ContOrStop::Stop.

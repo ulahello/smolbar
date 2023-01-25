@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.7.0] - 2023-01-25
 ### added
 * added `--terse` flag to decrease log level
 

@@ -4,6 +4,9 @@
 ### added
 * added `--terse` flag to decrease log level
 
+### fixed
+* no longer using `tracing` for logging for fatal error messages
+
 ### changed
 * updated dependencies
 

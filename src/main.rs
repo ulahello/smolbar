@@ -12,11 +12,12 @@ mod protocol;
 use anyhow::Context;
 use clap::Parser;
 use dirs::config_dir;
+use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use tokio::select;
 use tokio::signal::unix::{signal, Signal, SignalKind};
 use tokio::sync::{mpsc, Notify};
 use tokio::task::{self, JoinHandle};
-use tracing::{error, info, span, trace, warn, Level};
+use tracing::{info, span, trace, warn, Level};
 
 use std::io::{stderr, stdout, Write};
 use std::path::PathBuf;
@@ -66,13 +67,28 @@ async fn main() -> ExitCode {
         .with_timer(tracing_subscriber::fmt::time::time())
         .init();
 
+    #[allow(clippy::let_underscore_drop)]
     if let Err(err) = try_main(args).await {
-        // TODO: odd to use structured logging that gives context to logs
-        // without context by separating each cause its own info log
-        error!("{err}");
-        err.chain()
-            .skip(1)
-            .for_each(|cause| info!("because: {cause}"));
+        let bufwtr = BufferWriter::stderr(ColorChoice::Auto);
+        let mut buffer = bufwtr.buffer();
+        let mut spec = ColorSpec::new();
+        _ = buffer.set_color(spec.set_fg(Some(Color::Red)));
+        _ = write!(&mut buffer, "error: ");
+        spec.clear();
+        _ = buffer.set_color(&spec);
+        _ = writeln!(&mut buffer, "{err}");
+
+        if err.chain().nth(1).is_some() {
+            _ = buffer.set_color(spec.set_fg(Some(Color::Red)));
+            _ = writeln!(&mut buffer, "because:");
+            spec.clear();
+            _ = buffer.set_color(&spec);
+        }
+        for cause in err.chain().skip(1) {
+            _ = writeln!(&mut buffer, "  {cause}");
+        }
+
+        _ = bufwtr.print(&buffer);
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS

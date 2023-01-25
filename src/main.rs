@@ -44,6 +44,10 @@ struct Args {
     #[clap(short, long, value_name = "PATH")]
     config: Option<PathBuf>,
 
+    /// Decrease log verbosity
+    #[clap(short, long)]
+    terse: bool,
+
     /// Print license information
     #[clap(short, long)]
     license: bool,
@@ -51,13 +55,18 @@ struct Args {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
+    let args = Args::parse();
     tracing_subscriber::fmt()
         .with_writer(stderr)
-        .with_max_level(Level::TRACE)
+        .with_max_level(if args.terse {
+            Level::INFO
+        } else {
+            Level::TRACE
+        })
         .with_timer(tracing_subscriber::fmt::time::time())
         .init();
 
-    if let Err(err) = try_main(Args::parse()).await {
+    if let Err(err) = try_main(args).await {
         // TODO: odd to use structured logging that gives context to logs
         // without context by separating each cause its own info log
         error!("{err}");

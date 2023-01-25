@@ -1,6 +1,9 @@
 # changelog
 
 ## [unreleased]
+### added
+* added `--terse` flag to decrease log level
+
 ### changed
 * updated dependencies
 

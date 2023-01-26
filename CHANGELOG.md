@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+### changed
+* bumped msrv to 1.66.1
 
 ## [0.7.0] - 2023-01-25
 ### added

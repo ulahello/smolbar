@@ -67,7 +67,7 @@ async fn main() -> ExitCode {
         .with_timer(tracing_subscriber::fmt::time::time())
         .init();
 
-    #[allow(clippy::let_underscore_drop)]
+    #[allow(let_underscore_drop)]
     if let Err(err) = try_main(args).await {
         let bufwtr = BufferWriter::stderr(ColorChoice::Auto);
         let mut buffer = bufwtr.buffer();

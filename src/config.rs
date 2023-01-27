@@ -7,7 +7,9 @@ use anyhow::Context;
 use serde_derive::{Deserialize, Serialize};
 use tracing::{info, trace};
 
-use std::fs;
+use core::str;
+use std::fs::OpenOptions;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use crate::protocol::{Body, Header};
@@ -80,9 +82,23 @@ impl Config {
             .canonicalize()
             .context("failed to canonicalize config path")?;
 
-        let toml: TomlBar = toml::from_str(
-            &fs::read_to_string(&path).context("failed to read config to utf-8 string")?,
-        )?;
+        let toml: TomlBar = {
+            // TODO: would be nice to parse toml from `impl Read`
+            let mut file = OpenOptions::new()
+                .read(true)
+                .open(&path)
+                .context("failed to open config file")?;
+            let file_size = file
+                .metadata()
+                .ok()
+                .map(|metadata| metadata.len())
+                .and_then(|len| usize::try_from(len).ok())
+                .unwrap_or(0);
+            let mut bytes = Vec::with_capacity(file_size);
+            file.read_to_end(&mut bytes)
+                .context("failed to read config file")?;
+            toml::from_str(str::from_utf8(&bytes).context("invalid utf-8")?)?
+        };
 
         // command_dir is either the config's parent path or whatever is
         // specified in toml

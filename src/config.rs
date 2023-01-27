@@ -70,6 +70,7 @@ impl Config {
     ///
     /// - Canonicalizing `path` may fail
     /// - Reading from `path` may fail
+    /// - `path` contents may contain invalid UTF-8
     /// - `path` contents may be invalid TOML
     #[tracing::instrument]
     pub fn read_from_path(path: &Path) -> anyhow::Result<Self> {

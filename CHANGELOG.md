@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.7.1] - 2023-02-01
 ### changed
 * will now pre-allocate memory for config file based on its metadata
 * updated dependencies

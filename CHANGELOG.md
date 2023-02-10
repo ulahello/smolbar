@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+### changed
+* updated dependencies
 
 ## [0.7.1] - 2023-02-01
 ### changed

@@ -2,6 +2,7 @@
 
 ## [unreleased]
 ### changed
+* tighten `toml` feature flags
 * updated dependencies
 
 ## [0.7.1] - 2023-02-01

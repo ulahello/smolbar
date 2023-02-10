@@ -21,7 +21,7 @@ serde_derive = "1.0.152"
 serde_json = "1.0.93"
 termcolor = "1.2.0"
 tokio = { version = "1.25.0", features = ["time", "signal", "sync", "rt", "macros"] }
-toml = { version = "0.7.2", features = ["preserve_order"] }
+toml = { version = "0.7.2", default-features = false, features = ["parse", "preserve_order"] }
 tracing = "0.1.37"
 tracing-subscriber = "0.3.16"
 

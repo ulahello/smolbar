@@ -92,6 +92,7 @@ async fn main() -> ExitCode {
 async fn try_main(args: Args) -> anyhow::Result<()> {
     /* print license information */
     if args.license {
+        // NOTE: volatile, copypasted data
         for (name, license, owners) in [
             (
                 env!("CARGO_PKG_NAME"),

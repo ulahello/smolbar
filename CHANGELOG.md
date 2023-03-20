@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.7.2] - 2023-03-20
 ### changed
 * tighten `toml` feature flags
 * replaced `clap` dependency with `argh`

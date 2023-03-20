@@ -10,7 +10,7 @@ mod config;
 mod protocol;
 
 use anyhow::Context;
-use clap::Parser;
+use argh::FromArgs;
 use dirs::config_dir;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use tokio::select;
@@ -28,35 +28,25 @@ use crate::bar::{ContOrStop, Smolbar};
 use crate::config::Config;
 use crate::protocol::Header;
 
-#[derive(Parser, Debug)]
-#[clap(author, version, about)]
-#[clap(help_template(
-    "{before-help}{name} {version}
-{author-with-newline}{about-with-newline}
-{usage-heading} {usage}
-
-{all-args}{after-help}"
-))]
+/// smol status command for sway
+#[derive(FromArgs, Debug)]
 struct Args {
-    /// Path to the configuration file
-    ///
-    /// If this isn't specified, it falls back to "smolbar/config.toml" in the
-    /// current user's config directory.
-    #[clap(short, long, value_name = "PATH")]
+    /// path to configuration file [default: config.toml in $XDG_CONFIG_HOME or $HOME/.config]
+    #[argh(option, short = 'c')]
     config: Option<PathBuf>,
 
-    /// Decrease log verbosity
-    #[clap(short, long)]
+    /// decrease log verbosity
+    #[argh(switch, short = 't')]
     terse: bool,
 
-    /// Print license information
-    #[clap(short, long)]
+    /// print license information
+    #[argh(switch, short = 'l')]
     license: bool,
 }
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
-    let args = Args::parse();
+    let args: Args = argh::from_env();
     tracing_subscriber::fmt()
         .with_writer(stderr)
         .with_max_level(if args.terse {

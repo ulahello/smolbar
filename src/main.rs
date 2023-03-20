@@ -19,7 +19,7 @@ use tokio::sync::{mpsc, Notify};
 use tokio::task::{self, JoinHandle};
 use tracing::{info, span, trace, warn, Level};
 
-use std::io::{stderr, stdout, Write};
+use std::io::{self, stderr, stdout, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -46,6 +46,29 @@ struct Args {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
+    fn pretty_err(err: anyhow::Error) -> io::Result<()> {
+        let bufwtr = BufferWriter::stderr(ColorChoice::Auto);
+        let mut buffer = bufwtr.buffer();
+        let mut spec = ColorSpec::new();
+        buffer.set_color(spec.set_fg(Some(Color::Red)))?;
+        write!(&mut buffer, "error: ")?;
+        spec.clear();
+        buffer.set_color(&spec)?;
+        writeln!(&mut buffer, "{err}")?;
+
+        if err.chain().nth(1).is_some() {
+            buffer.set_color(spec.set_fg(Some(Color::Red)))?;
+            writeln!(&mut buffer, "because:")?;
+            spec.clear();
+            buffer.set_color(&spec)?;
+        }
+        for cause in err.chain().skip(1) {
+            writeln!(&mut buffer, "  {cause}")?;
+        }
+
+        bufwtr.print(&buffer)
+    }
+
     let args: Args = argh::from_env();
     tracing_subscriber::fmt()
         .with_writer(stderr)
@@ -59,26 +82,7 @@ async fn main() -> ExitCode {
 
     #[allow(let_underscore_drop)]
     if let Err(err) = try_main(args).await {
-        let bufwtr = BufferWriter::stderr(ColorChoice::Auto);
-        let mut buffer = bufwtr.buffer();
-        let mut spec = ColorSpec::new();
-        _ = buffer.set_color(spec.set_fg(Some(Color::Red)));
-        _ = write!(&mut buffer, "error: ");
-        spec.clear();
-        _ = buffer.set_color(&spec);
-        _ = writeln!(&mut buffer, "{err}");
-
-        if err.chain().nth(1).is_some() {
-            _ = buffer.set_color(spec.set_fg(Some(Color::Red)));
-            _ = writeln!(&mut buffer, "because:");
-            spec.clear();
-            _ = buffer.set_color(&spec);
-        }
-        for cause in err.chain().skip(1) {
-            _ = writeln!(&mut buffer, "  {cause}");
-        }
-
-        _ = bufwtr.print(&buffer);
+        _ = pretty_err(err);
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS

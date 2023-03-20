@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+### added
+* added license information for direct dependencies to `--license` flag
 
 ## [0.7.2] - 2023-03-20
 ### changed

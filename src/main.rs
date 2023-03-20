@@ -92,7 +92,78 @@ async fn main() -> ExitCode {
 async fn try_main(args: Args) -> anyhow::Result<()> {
     /* print license information */
     if args.license {
-        writeln!(stdout(), "{}", env!("CARGO_PKG_LICENSE"))?;
+        for (name, license, owners) in [
+            (
+                env!("CARGO_PKG_NAME"),
+                env!("CARGO_PKG_LICENSE"),
+                env!("CARGO_PKG_AUTHORS"),
+            ),
+            (
+                "anyhow",
+                "MIT OR Apache-2.0",
+                "David Tolnay <dtolnay@gmail.com>",
+            ),
+            (
+                "argh",
+                "BSD-3-Clause",
+                "Taylor Cramer <cramertj@google.com>, Benjamin Brittain <bwb@google.com>, Erick Tryzelaar <etryzelaar@google.com>",
+            ),
+            (
+                "dirs",
+                "MIT OR Apache-2.0",
+                "Simon Ochsenreither <simon@ochsenreither.de>",
+            ),
+            (
+                "libc",
+                "MIT OR Apache-2.0",
+                "The Rust Project Developers",
+            ),
+            (
+                "serde",
+                "MIT OR Apache-2.0",
+                "Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>",
+            ),
+            (
+                "serde_derive",
+                "MIT OR Apache-2.0",
+                "Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>",
+            ),
+            (
+                "serde_json",
+                "MIT OR Apache-2.0",
+                "Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>",
+            ),
+            (
+                "termcolor",
+                "Unlicense OR MIT",
+                "Andrew Gallant <jamslam@gmail.com>",
+            ),
+            (
+                "tokio",
+                "MIT",
+                "Tokio Contributors <team@tokio.rs>",
+            ),
+            (
+                "toml",
+                "MIT OR Apache-2.0",
+                "Alex Crichton <alex@alexcrichton.com>",
+            ),
+            (
+                "tracing",
+                "MIT",
+                "Eliza Weisman <eliza@buoyant.io>, Tokio Contributors <team@tokio.rs>",
+            ),
+            (
+                "tracing-subscriber",
+                "MIT",
+                "Eliza Weisman <eliza@buoyant.io>, David Barsky <me@davidbarsky.com>, Tokio Contributors <team@tokio.rs>",
+            ),
+        ] {
+            writeln!(
+                stdout(),
+                "'{name}' by {owners}, licensed under '{license}'",
+            )?;
+        }
         return Ok(());
     }
 

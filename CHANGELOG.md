@@ -3,6 +3,8 @@
 ## [unreleased]
 ### changed
 * tighten `toml` feature flags
+* replaced `clap` dependency with `argh`
+  * we don't use many clap features so a less featured argument parser is fitting
 * updated dependencies
 
 ## [0.7.1] - 2023-02-01

@@ -19,7 +19,7 @@ use tokio::sync::{mpsc, Notify};
 use tokio::task::{self, JoinHandle};
 use tracing::{info, span, trace, warn, Level};
 
-use std::io::{self, stderr, stdout, Write};
+use std::io::{self, stderr, stdout, BufWriter, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -107,6 +107,7 @@ async fn try_main(args: Args) -> anyhow::Result<()> {
 
     /* print license information */
     if args.license {
+        let mut stdout = BufWriter::new(stdout());
         // NOTE: volatile, copypasted data
         for (name, license, owners) in [
             (
@@ -176,7 +177,7 @@ async fn try_main(args: Args) -> anyhow::Result<()> {
             ),
         ] {
             writeln!(
-                stdout(),
+                stdout,
                 "'{name}' by {owners}, licensed under '{license}'",
             )?;
         }

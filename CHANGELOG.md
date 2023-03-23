@@ -4,6 +4,9 @@
 ### added
 * added license information for direct dependencies to `--license` flag
 
+### fixed
+* bring back `--version` flag
+
 ## [0.7.2] - 2023-03-20
 ### changed
 * tighten `toml` feature flags

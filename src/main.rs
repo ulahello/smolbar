@@ -42,6 +42,10 @@ struct Args {
     /// print license information
     #[argh(switch, short = 'l')]
     license: bool,
+
+    /// print version
+    #[argh(switch, short = 'V')]
+    version: bool,
 }
 
 #[tokio::main(flavor = "current_thread")]
@@ -90,6 +94,17 @@ async fn main() -> ExitCode {
 }
 
 async fn try_main(args: Args) -> anyhow::Result<()> {
+    /* print version */
+    if args.version {
+        writeln!(
+            stdout(),
+            "{} {}",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION")
+        )?;
+        return Ok(());
+    }
+
     /* print license information */
     if args.license {
         // NOTE: volatile, copypasted data

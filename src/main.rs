@@ -69,6 +69,7 @@ async fn main() -> ExitCode {
         for cause in err.chain().skip(1) {
             writeln!(&mut buffer, "  {cause}")?;
         }
+        drop(err);
 
         bufwtr.print(&buffer)
     }

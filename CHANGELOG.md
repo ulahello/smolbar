@@ -4,6 +4,9 @@
 ### fixed
 * fixed incorrect documentation about location of config file
 
+### changed
+* updated dependencies
+
 ## [0.7.3] - 2023-03-23
 ### added
 * added license information for direct dependencies to `--license` flag

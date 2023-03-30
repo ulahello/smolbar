@@ -23,7 +23,7 @@ $ cargo install --locked smolbar
 
 `smolbar` is configured through a TOML file.
 
-if `--config` is not specified, `smolbar` looks for a file called `config.toml` in `$XDG_CONFIG_HOME` or `$HOME/.config`.
+if `--config` is not specified, `smolbar` looks for a file called `config.toml` in `$XDG_CONFIG_HOME/smolbar` or `$HOME/.config/smolbar`.
 
 for an example of a configuration, see the [examples](./examples).
 

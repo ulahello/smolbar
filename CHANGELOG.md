@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+### fixed
+* fixed incorrect documentation about location of config file
 
 ## [0.7.3] - 2023-03-23
 ### added

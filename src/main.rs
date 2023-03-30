@@ -31,7 +31,7 @@ use crate::protocol::Header;
 /// smol status command for sway
 #[derive(FromArgs, Debug)]
 struct Args {
-    /// path to configuration file [default: config.toml in $XDG_CONFIG_HOME or $HOME/.config]
+    /// path to configuration file [default: config.toml in $XDG_CONFIG_HOME/smolbar or $HOME/.config/smolbar]
     #[argh(option, short = 'c')]
     config: Option<PathBuf>,
 

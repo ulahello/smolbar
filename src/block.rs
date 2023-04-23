@@ -301,7 +301,7 @@ impl Block {
         task::spawn(async move { tx.send(BlockMsg::RequestBarRefresh).await.unwrap() });
     }
 
-    async fn regenerate_body(&mut self, init: bool) {
+    async fn regenerate_body(&self, init: bool) {
         let span = span!(
             Level::INFO,
             "block_regen_body",

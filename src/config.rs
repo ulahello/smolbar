@@ -3,8 +3,10 @@
 
 //! Configuration structures for the bar and its blocks.
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
+use semver::{Version, VersionReq};
 use serde_derive::{Deserialize, Serialize};
+use tracing::{span, Level};
 
 use core::str;
 use std::fs::OpenOptions;
@@ -18,6 +20,8 @@ use crate::protocol::{Body, Header, Signal};
 #[serde(deny_unknown_fields)]
 pub struct TomlBar {
     command_dir: Option<String>,
+    #[serde(default = "TomlBar::default_smolbar_version_req")]
+    pub smolbar_version: VersionReq,
     /// Configured [`Header`]
     #[serde(default = "Header::default")]
     pub header: Header,
@@ -27,6 +31,18 @@ pub struct TomlBar {
     /// The bar's configured [blocks](TomlBlock)
     #[serde(default = "Vec::new", rename = "block")]
     pub blocks: Vec<TomlBlock>,
+}
+
+impl TomlBar {
+    pub const fn default_smolbar_version_req() -> VersionReq {
+        VersionReq::STAR
+    }
+
+    pub fn current_smolbar_version() -> Version {
+        env!("CARGO_PKG_VERSION")
+            .parse()
+            .expect("Cargo sets correctly version information")
+    }
 }
 
 /// Block configuration, directly deserialized.
@@ -99,6 +115,30 @@ impl Config {
             let utf8 = str::from_utf8(&bytes).context("invalid utf-8")?;
             toml::from_str(utf8)?
         };
+
+        /* check smolbar version */
+        {
+            let current = TomlBar::current_smolbar_version();
+            let required = &toml.smolbar_version;
+
+            let span = span!(
+                Level::INFO,
+                "config_check_version",
+                current = format_args!(r#""{current}""#),
+                required = format_args!(r#""{required}""#)
+            );
+            let _enter = span.enter();
+
+            if required.matches(&current) {
+                tracing::debug!("smolbar_version is satisfied");
+            } else {
+                tracing::error!("smolbar_version is unsatisfied");
+                Err(anyhow!(
+                    r#"current version "{current}" does not satisfy requirement "{required}""#
+                ))
+                .context("this configuration is unsupported by the current version of smolbar")?;
+            }
+        }
 
         /* command_dir is either the config's parent path or whatever is
          * specified in toml */

@@ -1,6 +1,9 @@
 # changelog
 
 ## [unreleased]
+### added
+* added global configuration key `smolbar_version` to specify version requirement for `smolbar`
+
 ### fixed
 * fixed incorrect documentation about location of config file
 

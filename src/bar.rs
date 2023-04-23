@@ -103,6 +103,7 @@ impl Bar {
     }
 
     pub async fn reload(&mut self) -> anyhow::Result<()> {
+        // TODO: warn if header has changed, changes will not take effect
         let new_config =
             Config::read_from_path(&self.config.path).context("failed to reload config")?;
         self.blocks.remove_all().await;

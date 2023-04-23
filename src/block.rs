@@ -129,6 +129,12 @@ impl Block {
                         BlockMsg::RegenBody { init } => {
                             tracing::trace!("regenerating body");
                             drop(enter);
+                            /* TODOO: while we regenerate the body, we may
+                             * receive RegenBody. those will be queued ahead of
+                             * the RequestBarRefresh that is sent once
+                             * regeneration is complete, so we'll end up running
+                             * the command multiple times without any bar
+                             * refreshes. */
                             self.regenerate_body(init).await;
                         }
 

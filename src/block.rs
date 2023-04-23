@@ -431,9 +431,13 @@ impl Block {
             let toml_signal = self.toml.signal;
             let id = self.id;
             task::spawn(async move {
-                let span = span!(Level::INFO, "block_signal", id, signal = toml_signal);
+                let span = span!(Level::INFO, "block_signal", id, signal = field::Empty);
+                if let Some(signal) = toml_signal {
+                    span.record("signal", format_args!("{signal}"));
+                }
+
                 if let Some(signum) = toml_signal {
-                    let sig_kind = SignalKind::from_raw(signum);
+                    let sig_kind = SignalKind::from_raw(signum.as_raw());
                     if let Ok(mut sig) = signal(sig_kind) {
                         while let Some(()) = sig.recv().await {
                             tx.send(RegenBody { init: false })

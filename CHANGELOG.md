@@ -5,6 +5,22 @@
 * fixed incorrect documentation about location of config file
 
 ### changed
+* **BREAKING:** changed serialization of signals to their actual name (like "SIGSTOP", "SIGCONT")
+  * this makes configurations more portable across architectures where the same signal may have a different value
+  * the following signals are currently supported:
+    * `SIGALRM`
+    * `SIGCHLD`
+    * `SIGCONT`
+    * `SIGHUP`
+    * `SIGINT`
+    * `SIGIO`
+    * `SIGPIPE`
+    * `SIGQUIT`
+    * `SIGSTOP`
+    * `SIGTERM`
+    * `SIGUSR1`
+    * `SIGUSR2`
+    * `SIGWINCH`
 * updated dependencies
 
 ## [0.7.3] - 2023-03-23

@@ -34,8 +34,8 @@ it inherits all keys from the `Header` JSON object defined in `swaybar-protocol(
 
 ```toml
 [header]
-cont_signal = 18 # default value
-stop_signal = 2  # SIGINT
+cont_signal = "SIGCONT" # default value
+stop_signal = "SIGINT"
 ```
 
 ## blocks
@@ -72,7 +72,7 @@ all `local` blocks are tables in the table array `block`.
 | prefix   | string prefixing `full_text`                        |
 | postfix  | string appended to `full_text`                      |
 | interval | interval, in seconds, at which to refresh the block |
-| signal   | OS signal to refresh the block when received        |
+| signal   | OS signal name to refresh the block when received   |
 
 `local` inherits all other keys from the `Body` JSON object defined in `swaybar-protocol(7)`.
 
@@ -109,7 +109,7 @@ this means that by default, sending `smolbar`'s process `SIGCONT` will cause it 
 
 ```toml
 [header]
-# cont_signal is 18 (SIGCONT) by default
+# cont_signal is SIGCONT by default
 ```
 
 ```console
@@ -121,11 +121,11 @@ $ pkill -SIGCONT smolbar
 
 ```toml
 [header]
-cont_signal = 10
+cont_signal = "SIGUSR1"
 ```
 
 ```console
-$ pkill --signal 10 smolbar
+$ pkill -SIGUSR1 smolbar
 # causes smolbar to reload config
 ```
 

@@ -3,10 +3,71 @@
 
 //! Implementation of `swaybar-protocol(7)`.
 
-use libc::{SIGCONT, SIGSTOP};
 use serde_derive::{Deserialize, Serialize};
 
+use core::fmt;
 use core::str::FromStr;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum Signal {
+    SigAlrm,
+    SigChld,
+    SigCont,
+    SigHup,
+    SigInt,
+    SigIo,
+    SigPipe,
+    SigQuit,
+    SigStop,
+    SigTerm,
+    SigUsr1,
+    SigUsr2,
+    SigWinch,
+}
+
+impl Signal {
+    pub const fn as_raw(self) -> i32 {
+        match self {
+            SigAlrm => libc::SIGALRM,
+            SigChld => libc::SIGCHLD,
+            SigCont => libc::SIGCONT,
+            SigHup => libc::SIGHUP,
+            SigInt => libc::SIGINT,
+            SigIo => libc::SIGIO,
+            SigPipe => libc::SIGPIPE,
+            SigQuit => libc::SIGQUIT,
+            SigStop => libc::SIGSTOP,
+            SigTerm => libc::SIGTERM,
+            SigUsr1 => libc::SIGUSR1,
+            SigUsr2 => libc::SIGUSR2,
+            SigWinch => libc::SIGWINCH,
+        }
+    }
+}
+
+impl fmt::Display for Signal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            SigAlrm => "SIGALRM",
+            SigChld => "SIGCHLD",
+            SigCont => "SIGCONT",
+            SigHup => "SIGHUP",
+            SigInt => "SIGINT",
+            SigIo => "SIGIO",
+            SigPipe => "SIGPIPE",
+            SigQuit => "SIGQUIT",
+            SigStop => "SIGSTOP",
+            SigTerm => "SIGTERM",
+            SigUsr1 => "SIGUSR1",
+            SigUsr2 => "SIGUSR2",
+            SigWinch => "SIGWINCH",
+        };
+        f.write_str(s)
+    }
+}
+
+use Signal::*;
 
 /// Header object as defined in `swaybar-protocol(7)`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -20,19 +81,19 @@ pub struct Header {
     pub click_events: Option<bool>,
     /// "The signal that swaybar should send to continue processing"
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cont_signal: Option<i32>,
+    pub cont_signal: Option<Signal>,
     /// "The signal that swaybar should send to stop processing"
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub stop_signal: Option<i32>,
+    pub stop_signal: Option<Signal>,
 }
 
 impl Header {
     /// Default value of [`Header::version`].
     pub const DEFAULT_VERSION: i32 = 1;
     /// Default value of [`Header::cont_signal`].
-    pub const DEFAULT_CONT_SIG: i32 = SIGCONT;
+    pub const DEFAULT_CONT_SIG: Signal = SigCont;
     /// Default value of [`Header::stop_signal`].
-    pub const DEFAULT_STOP_SIG: i32 = SIGSTOP;
+    pub const DEFAULT_STOP_SIG: Signal = SigStop;
 
     const fn default_version() -> i32 {
         Self::DEFAULT_VERSION

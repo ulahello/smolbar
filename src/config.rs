@@ -11,7 +11,7 @@ use std::fs::OpenOptions;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use crate::protocol::{Body, Header};
+use crate::protocol::{Body, Header, Signal};
 
 /// Bar configuration, directly deserialized.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -45,7 +45,7 @@ pub struct TomlBlock {
     /// [`Duration`](core::time::Duration), or is not finite, it is ignored.
     pub interval: Option<f32>,
     /// Operating system signal to refresh the block when received
-    pub signal: Option<i32>,
+    pub signal: Option<Signal>,
 
     /// Body configured at `local` scope
     #[serde(flatten)]

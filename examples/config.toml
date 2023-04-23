@@ -2,7 +2,7 @@ command_dir = "blocks"
 separator_block_width = 16
 
 [header]
-stop_signal = 2
+stop_signal = "SIGINT"
 
 [[block]]
 command = "./memory_mem.sh"

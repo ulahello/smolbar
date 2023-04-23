@@ -74,14 +74,23 @@ impl Bar {
     ///
     /// Writing to standard output may fail.
     pub fn write_header(&mut self) -> anyhow::Result<()> {
+        let header = self.config.toml.header;
         let span = span!(
             Level::INFO,
             "bar_send_header",
-            header.version = self.config.toml.header.version,
-            header.click_events = self.config.toml.header.click_events,
-            header.cont_signal = self.config.toml.header.cont_signal,
-            header.stop_signal = self.config.toml.header.stop_signal,
+            header.version = header.version,
+            header.click_events = header.click_events,
+            header.cont_signal = field::Empty,
+            header.stop_signal = field::Empty,
         );
+        for (signal, field) in [
+            (header.cont_signal, "header.cont_signal"),
+            (header.stop_signal, "header.stop_signal"),
+        ] {
+            if let Some(signal) = signal {
+                span.record(field, format_args!("{signal}"));
+            }
+        }
         let _enter = span.enter();
 
         ser::to_writer(&mut self.stdout, &self.config.toml.header)?;
@@ -223,9 +232,14 @@ impl Bar {
             ] {
                 let tx = self.tx.clone();
                 let handle = task::spawn(async move {
-                    let span = span!(Level::INFO, "sig_listener", signum, signame);
+                    let span = span!(
+                        Level::INFO,
+                        "sig_listener",
+                        signum = format_args!("{signum}"),
+                        signame
+                    );
 
-                    let sig_kind = SignalKind::from_raw(signum);
+                    let sig_kind = SignalKind::from_raw(signum.as_raw());
                     if let Ok(mut sig) = signal(sig_kind) {
                         {
                             let _enter = span.enter();

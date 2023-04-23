@@ -17,6 +17,7 @@ use crate::protocol::{Body, Header, Signal};
 
 /// Bar configuration, directly deserialized.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+// TODO: don't deny unknown fields for compatibility, but do warn about them
 #[serde(deny_unknown_fields)]
 pub struct TomlBar {
     command_dir: Option<String>,

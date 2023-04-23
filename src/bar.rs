@@ -236,7 +236,7 @@ impl Bar {
                         Level::INFO,
                         "sig_listener",
                         signum = format_args!("{signum}"),
-                        signame
+                        signame = format_args!("{signame}")
                     );
 
                     let sig_kind = SignalKind::from_raw(signum.as_raw());

@@ -20,10 +20,8 @@ use crate::protocol::Body;
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Copy, Debug)]
-#[repr(u8)]
-pub enum BlockMsg {
-    RegenBody { init: bool },
-    RequestBarRefresh,
+pub struct RegenBody {
+    init: bool,
 }
 
 #[derive(Debug)]
@@ -35,8 +33,8 @@ pub struct Block {
 
     id: usize,
 
-    rx: mpsc::Receiver<BlockMsg>,
-    tx: mpsc::Sender<BlockMsg>,
+    rx: mpsc::Receiver<RegenBody>,
+    tx: mpsc::Sender<RegenBody>,
     bar_tx: mpsc::Sender<BarMsg>,
     cancel: CancellationToken,
 
@@ -96,7 +94,7 @@ impl Block {
             let span = span!(Level::INFO, "block_init", id = self.id);
             let _enter = span.enter();
             tracing::trace!("performing body initialization");
-            tx.send(BlockMsg::RegenBody { init: true }).await.unwrap();
+            tx.send(RegenBody { init: true }).await.unwrap();
         });
 
         'listen_loop: loop {
@@ -119,33 +117,12 @@ impl Block {
                 }
 
                 Some(msg) = self.rx.recv() => {
-                    let enter = span.enter();
-
-                    span.record("msg", format_args!("{msg:?}"));
-
-                    tracing::trace!("received message");
-
-                    match msg {
-                        BlockMsg::RegenBody { init } => {
-                            tracing::trace!("regenerating body");
-                            drop(enter);
-                            /* TODOO: while we regenerate the body, we may
-                             * receive RegenBody. those will be queued ahead of
-                             * the RequestBarRefresh that is sent once
-                             * regeneration is complete, so we'll end up running
-                             * the command multiple times without any bar
-                             * refreshes. */
-                            self.regenerate_body(init).await;
-                        }
-
-                        BlockMsg::RequestBarRefresh => {
-                            tracing::trace!("requesting bar refresh");
-                            self.bar_tx
-                                .send(BarMsg::RefreshBlocks)
-                                .await
-                                .expect("Bar must outlive its Blocks");
-                        }
+                    {
+                        let _enter = span.enter();
+                        span.record("msg", format_args!("{msg:?}"));
+                        tracing::trace!("regenerating body");
                     }
+                    self.regenerate_body(msg.init).await;
                 }
             );
         }
@@ -158,7 +135,7 @@ impl Block {
         global: &Body,
         local: &TomlBlock,
         body: &mut Body,
-        tx: mpsc::Sender<BlockMsg>,
+        bar_tx: mpsc::Sender<BarMsg>,
     ) {
         fn update<T: Clone + FromStr>(
             field: &mut Option<T>,
@@ -295,10 +272,12 @@ impl Block {
             }
         };
 
-        /* request refresh since body has changed. this is done in a new task to
-         * prevent deadlock, since the listener loop may call this fn. */
-        // TODO: check that body is different before requesting refresh
-        task::spawn(async move { tx.send(BlockMsg::RequestBarRefresh).await.unwrap() });
+        /* request refresh since body has changed */
+        tracing::trace!("requesting bar refresh");
+        bar_tx
+            .send(BarMsg::RefreshBlocks)
+            .await
+            .expect("Bar must outlive its Blocks");
     }
 
     async fn regenerate_body(&self, init: bool) {
@@ -358,12 +337,13 @@ impl Block {
             );
         }
 
+        let _enter = span.enter();
         Self::update_body(
             immediate.lines(),
             &self.global_body,
             &self.toml,
             &mut *self.body.write().await,
-            self.tx.clone(),
+            self.bar_tx.clone(),
         )
         .await;
     }
@@ -405,7 +385,7 @@ impl Block {
 
                                 loop {
                                     interval.tick().await;
-                                    tx.send(BlockMsg::RegenBody { init: false })
+                                    tx.send(RegenBody { init: false })
                                         .await
                                         .expect("Block must outlive interval handle");
                                 }
@@ -437,7 +417,7 @@ impl Block {
                     let sig_kind = SignalKind::from_raw(signum);
                     if let Ok(mut sig) = signal(sig_kind) {
                         while let Some(()) = sig.recv().await {
-                            tx.send(BlockMsg::RegenBody { init: false })
+                            tx.send(RegenBody { init: false })
                                 .await
                                 .expect("Block must outlive signal handle");
                         }

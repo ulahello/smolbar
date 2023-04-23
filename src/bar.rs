@@ -248,7 +248,7 @@ impl Bar {
 
                         while let Some(()) = sig.recv().await {
                             let _enter = span.enter();
-                            tracing::trace!("received signal, sending {action:?} to bar");
+                            tracing::trace!("received signal, sending {action:?} to Bar");
                             tx.send(action)
                                 .await
                                 .expect("signal handles must outlive Bar");

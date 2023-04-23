@@ -440,6 +440,8 @@ impl Block {
                     let sig_kind = SignalKind::from_raw(signum.as_raw());
                     if let Ok(mut sig) = signal(sig_kind) {
                         while let Some(()) = sig.recv().await {
+                            let _enter = span.enter();
+                            tracing::trace!("received signal, requesting Block regenerate body");
                             tx.send(RegenBody { init: false })
                                 .await
                                 .expect("Block must outlive signal handle");

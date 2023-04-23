@@ -141,11 +141,11 @@ impl Block {
     ) {
         fn update<T: Clone + FromStr>(
             field: &mut Option<T>,
-            value: Option<&str>,
+            immediate: Option<&str>,
             local: &Option<T>,
             global: &Option<T>,
         ) {
-            *field = match value {
+            *field = match immediate {
                 Some(val) => match val.parse() {
                     Ok(new) => Some(new),
                     Err(_) => None,

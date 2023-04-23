@@ -199,7 +199,10 @@ async fn try_main(args: Args) -> anyhow::Result<()> {
         }
     };
 
-    tracing::info!(path = format_args!("{}", path.display()), "set config path");
+    tracing::info!(
+        path = format_args!(r#""{}""#, path.display()),
+        "set config path"
+    );
 
     /* load configuration */
     let config = Config::read_from_path(&path).context("failed to load config")?;

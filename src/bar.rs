@@ -208,7 +208,7 @@ impl Bar {
             self.signal_handles_created = true;
             let mut handles = Vec::with_capacity(2);
             let header = self.config.toml.header;
-            for (signum, action, debug_name) in [
+            for (signum, action, signame) in [
                 (
                     header.cont_signal.unwrap_or(Header::DEFAULT_CONT_SIG),
                     BarMsg::Reload,
@@ -222,7 +222,7 @@ impl Bar {
             ] {
                 let tx = self.tx.clone();
                 let handle = task::spawn(async move {
-                    let span = span!(Level::INFO, "sig_listener", signum, name = debug_name);
+                    let span = span!(Level::INFO, "sig_listener", signum, signame);
 
                     let sig_kind = SignalKind::from_raw(signum);
                     if let Ok(mut sig) = signal(sig_kind) {

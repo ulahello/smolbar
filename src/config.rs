@@ -112,7 +112,7 @@ impl Config {
         // before pushing toml specified dir, it is canonical. however, since we
         // push an uncanonicalized path, we should canonicalize here.
         tracing::trace!(
-            path = format_args!("{}", command_dir.display()),
+            path = format_args!(r#""{}""#, command_dir.display()),
             "canonicalizing command_dir",
         );
         command_dir = command_dir
@@ -120,13 +120,13 @@ impl Config {
             .context("failed to canonicalize command_dir")?;
 
         tracing::info!(
-            path = format_args!("{}", command_dir.display()),
+            path = format_args!(r#""{}""#, command_dir.display()),
             "set command_dir"
         );
 
         tracing::trace!(
             num = toml.blocks.len(),
-            path = format_args!("{}", path.display()),
+            path = format_args!(r#""{}""#, path.display()),
             "read block(s)",
         );
 

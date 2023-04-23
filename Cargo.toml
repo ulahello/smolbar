@@ -25,8 +25,8 @@ termcolor = "1.2.0"
 tokio = { version = "1.27.0", default-features = false, features = ["time", "signal", "process", "sync", "rt", "macros"] }
 tokio-util = { version = "0.7.7", default-features = false }
 toml = { version = "0.7.3", default-features = false, features = ["parse", "preserve_order"] }
-tracing = "0.1.37"
-tracing-subscriber = "0.3.17"
+tracing = { version = "0.1.37", default-features = false, features = ["attributes"] }
+tracing-subscriber = { version = "0.3.17", default-features = false, features = ["ansi"] }
 
 [profile.release]
 lto = true

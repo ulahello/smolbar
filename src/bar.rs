@@ -104,7 +104,7 @@ impl Bar {
 
     pub async fn reload(&mut self) -> anyhow::Result<()> {
         let new_config =
-            Config::read_from_path(&self.config.path).context("failed to load config")?;
+            Config::read_from_path(&self.config.path).context("failed to reload config")?;
         self.blocks.remove_all().await;
         self.config = new_config;
         // TODO: avoid cloning

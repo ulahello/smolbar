@@ -5,7 +5,6 @@
 
 use anyhow::Context;
 use serde_derive::{Deserialize, Serialize};
-use tracing::{info, trace};
 
 use core::str;
 use std::fs::OpenOptions;
@@ -97,7 +96,8 @@ impl Config {
             let mut bytes = Vec::with_capacity(file_size);
             file.read_to_end(&mut bytes)
                 .context("failed to read config file")?;
-            toml::from_str(str::from_utf8(&bytes).context("invalid utf-8")?)?
+            let utf8 = str::from_utf8(&bytes).context("invalid utf-8")?;
+            toml::from_str(utf8)?
         };
 
         // command_dir is either the config's parent path or whatever is
@@ -111,19 +111,22 @@ impl Config {
 
         // before pushing toml specified dir, it is canonical. however, since we
         // push an uncanonicalized path, we should canonicalize here.
-        trace!(
-            path = command_dir.display().to_string(),
+        tracing::trace!(
+            path = format_args!("{}", command_dir.display()),
             "canonicalizing command_dir",
         );
         command_dir = command_dir
             .canonicalize()
             .context("failed to canonicalize command_dir")?;
 
-        info!(path = command_dir.display().to_string(), "set command_dir");
+        tracing::info!(
+            path = format_args!("{}", command_dir.display()),
+            "set command_dir"
+        );
 
-        trace!(
+        tracing::trace!(
             num = toml.blocks.len(),
-            path = path.display().to_string(),
+            path = format_args!("{}", path.display()),
             "read block(s)",
         );
 

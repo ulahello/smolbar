@@ -1,76 +1,69 @@
 // copyright (C) 2022-2023 Ula Shipman <ula.hello@mailbox.org>
 // licensed under GPL-3.0-or-later
 
-//! Defines a runtime bar.
-
-use anyhow::Error;
+use anyhow::Context;
 use serde_json::ser;
-use tokio::sync::{mpsc, Mutex};
-use tokio::{select, task};
-use tracing::{error, info, span, trace, Level};
+use tokio::signal::unix::{signal, SignalKind};
+use tokio::sync::mpsc;
+use tokio::task;
+use tracing::{field, span, Level};
 
-use std::io::{stdout, BufWriter, Write};
-use std::path::PathBuf;
-use std::sync::Arc;
+use alloc::sync::Arc;
+use std::io::{stdout, BufWriter, StdoutLock, Write};
 
-use crate::block::Block;
-use crate::config::{Config, TomlBlock};
-use crate::protocol::Body;
+use crate::blocks::Blocks;
+use crate::config::Config;
+use crate::protocol::Header;
 
-/// Configured bar at runtime.
-#[derive(Debug)]
-pub struct Smolbar {
-    config: Config,
-
-    // blocks must never be both unlocked and None
-    blocks: Arc<Mutex<Option<Vec<Block>>>>,
-
-    cont_stop_recv: mpsc::Receiver<ContOrStop>,
-
-    // the receiver is kept alive as long as it receives true.
-    refresh_recv: mpsc::Receiver<bool>,
-    refresh_send: mpsc::Sender<bool>,
+#[allow(clippy::module_name_repetitions)]
+#[derive(Clone, Copy, Debug)]
+#[repr(u8)]
+pub enum BarMsg {
+    Reload,
+    ShutDown,
+    RefreshBlocks,
 }
 
-impl Smolbar {
-    /// Constructs a new, inactive [`Smolbar`], with the given configuration. If
-    /// a bar has already been constructed previously, this returns [`None`].
-    ///
-    /// When [run](Self::run), `cont_stop_recv` will listen for [`ContOrStop`]
-    /// messages. The caller should listen for continue and stop signals and
-    /// send either [`Cont`](ContOrStop::Cont) or [`Stop`](ContOrStop::Stop)
-    /// accordingly.
-    #[allow(clippy::missing_panics_doc)]
-    pub async fn new(config: Config, cont_stop_recv: mpsc::Receiver<ContOrStop>) -> Self {
-        let span = span!(Level::TRACE, "bar_new");
-        let _enter = span.enter();
+#[derive(Debug)]
+pub struct Bar {
+    config: Config,
+    blocks: Blocks,
 
-        // initialize bar without any blocks
-        let (refresh_send, refresh_recv) = mpsc::channel(1);
-        let blocks = Arc::new(Mutex::new(Some(Vec::with_capacity(
-            config.toml.blocks.len(),
-        ))));
-        let bar = Self {
-            config,
-            blocks,
-            cont_stop_recv,
-            refresh_recv,
-            refresh_send,
-        };
+    rx: mpsc::Receiver<BarMsg>,
+    tx: mpsc::Sender<BarMsg>,
 
-        // add blocks
-        for block in &bar.config.toml.blocks {
-            Self::push_block(
-                &bar.blocks,
-                bar.refresh_send.clone(),
-                bar.config.command_dir.clone(),
-                block.clone(),
-                bar.config.toml.body.clone(),
-            )
-            .await;
-        }
+    stdout: BufWriter<StdoutLock<'static>>,
 
-        bar
+    signal_handles_created: bool,
+}
+
+impl Bar {
+    const CHANNEL_SIZE: usize = 1024; // arbitrary, but not too high. this is only 1KiB of bar messages.
+
+    pub fn new(config: Config) -> (Self, mpsc::Sender<BarMsg>) {
+        let (tx, rx) = mpsc::channel(Self::CHANNEL_SIZE);
+
+        let mut blocks = Blocks::new(tx.clone());
+        // TODO: avoid cloning
+        blocks.add_all(
+            config.toml.blocks.iter().cloned(),
+            Arc::new(config.toml.body.clone()),
+            Arc::new(config.command_dir.clone()),
+        );
+
+        let stdout = BufWriter::new(stdout().lock());
+
+        (
+            Self {
+                config,
+                blocks,
+                rx,
+                tx: tx.clone(),
+                stdout,
+                signal_handles_created: true,
+            },
+            tx,
+        )
     }
 
     /// Send the configured [`Header`](crate::protocol::Header) through standard
@@ -79,10 +72,10 @@ impl Smolbar {
     /// # Errors
     ///
     /// Writing to standard output may fail.
-    fn init(&self) -> anyhow::Result<()> {
+    pub fn write_header(&mut self) -> anyhow::Result<()> {
         let span = span!(
-            Level::TRACE,
-            "bar_init",
+            Level::INFO,
+            "bar_send_header",
             header.version = self.config.toml.header.version,
             header.click_events = self.config.toml.header.click_events,
             header.cont_signal = self.config.toml.header.cont_signal,
@@ -90,248 +83,170 @@ impl Smolbar {
         );
         let _enter = span.enter();
 
-        ser::to_writer(stdout(), &self.config.toml.header)?;
-        write!(stdout(), "\n[")?;
+        ser::to_writer(&mut self.stdout, &self.config.toml.header)?;
+        write!(self.stdout, "\n[")?;
+        self.stdout.flush()?;
 
-        trace!("sent header");
+        tracing::trace!("sent header");
 
         Ok(())
     }
 
-    /// Activate and run the bar until completion. This also sends the
-    /// [`Header`](crate::protocol::Header).
-    ///
-    /// # Errors
-    ///
-    /// Writing the header to `stdout` may fail.
-    #[allow(clippy::missing_panics_doc)]
-    pub async fn run(mut self) -> Result<(), Error> {
-        // initialize header
-        self.init()?;
+    pub async fn reload(&mut self) -> anyhow::Result<()> {
+        let new_config =
+            Config::read_from_path(&self.config.path).context("failed to load config")?;
+        self.blocks.remove_all().await;
+        self.config = new_config;
+        // TODO: avoid cloning
+        self.blocks.add_all(
+            self.config.toml.blocks.iter().cloned(),
+            Arc::new(self.config.toml.body.clone()),
+            Arc::new(self.config.command_dir.clone()),
+        );
+        Ok(())
+    }
 
-        /* listen for refresh */
-        let blocks_c = Arc::clone(&self.blocks);
-        let refresh = task::spawn(async move {
-            loop {
-                let blocks_c = Arc::clone(&blocks_c);
-                let inner = task::spawn(async move {
-                    let mut stdout = BufWriter::new(stdout());
+    async fn shut_down(&mut self, sig_handles: &mut Vec<task::JoinHandle<()>>) {
+        let span = span!(Level::INFO, "bar_shut_down");
+        let _enter = span.enter();
 
-                    // continue as long as we receive true. self.refresh_send
-                    // must not be dropped until it sends a halt msg.
-                    while self.refresh_recv.recv().await.unwrap() {
-                        select!(
-                            // we may receive a halt msg while waiting to take
-                            // the lock
-                            msg = self.refresh_recv.recv() => {
-                                // refresh sender must not be dropped until it
-                                // sends a halt msg.
-                                if !msg.unwrap() {
-                                    break;
-                                }
-                            }
+        self.blocks.remove_all().await;
 
-                            guard = blocks_c.lock() => {
-                                if let Some(ref blocks) = *guard {
-                                    let span = span!(
-                                        Level::TRACE,
-                                        "bar_refresh_loop_write",
-                                        num_blocks = blocks.len(),
-                                    );
-                                    let _enter = span.enter();
+        for handle in sig_handles.drain(..) {
+            handle.abort();
+            crate::await_cancellable(handle).await;
+        }
 
-                                    // write each json block
-                                    match write!(stdout, "[") {
-                                        Ok(()) => (),
-                                        Err(error) => {
-                                            return Err((self.refresh_recv, error.into()));
-                                        }
-                                    }
+        tracing::trace!("shutdown complete");
+    }
 
-                                    for (i, block) in blocks.iter().enumerate() {
-                                        match write!(
-                                            stdout,
-                                            "{}",
-                                            ser::to_string_pretty(&*block.read().await)
-                                                .expect("invalid body json. this is a bug.")
-                                        ) {
-                                            Ok(()) => (),
-                                            Err(error) => {
-                                                return Err((self.refresh_recv, error.into()));
-                                            }
-                                        }
+    pub async fn refresh_blocks(&mut self) -> anyhow::Result<()> {
+        let span = span!(
+            Level::INFO,
+            "bar_refresh_blocks",
+            num_blocks = self.blocks.len(),
+        );
+        let _enter = span.enter();
 
-                                        // last block doesn't have comma after it
-                                        if i != blocks.len() - 1 {
-                                            match writeln!(stdout, ",") {
-                                                Ok(()) => (),
-                                                Err(error) => {
-                                                    return Err((self.refresh_recv, error.into()));
-                                                }
-                                            }
-                                        }
-                                    }
+        write!(self.stdout, "[")?;
+        for (idx, (_handle, _block_tx, body)) in self.blocks.iter().enumerate() {
+            ser::to_writer_pretty(&mut self.stdout, &*body.read().await)?;
 
-                                    match writeln!(stdout, "],") {
-                                        Ok(()) => (),
-                                        Err(error) => {
-                                            return Err((self.refresh_recv, error.into()));
-                                        }
-                                    }
+            // all but last block have comma
+            if idx != self.blocks.len() - 1 {
+                writeln!(self.stdout, ",")?;
+            }
+        }
+        writeln!(self.stdout, "],")?;
 
-                                    match stdout.flush() {
-                                        Ok(()) => (),
-                                        Err(error) => {
-                                            return Err((self.refresh_recv, error.into()));
-                                        }
-                                    }
+        self.stdout.flush()?;
+        tracing::trace!("sent block(s)");
 
-                                    trace!("sent block(s)");
-                                } else {
-                                    unreachable!("refresh loop expects that guard is held while blocks are taken");
-                                }
-                            }
-                        );
+        Ok(())
+    }
+
+    pub async fn listen(mut self) -> anyhow::Result<()> {
+        async fn inner(
+            span: impl Fn() -> tracing::Span,
+            bar: &mut Bar,
+            sig_handles: &mut Vec<task::JoinHandle<()>>,
+        ) -> anyhow::Result<()> {
+            while let Some(msg) = bar.rx.recv().await {
+                let span = span();
+                let _enter = span.enter();
+                span.record("msg", format_args!("{msg:?}"));
+
+                tracing::trace!("received message");
+
+                match msg {
+                    BarMsg::Reload => {
+                        tracing::info!("reloading configuration");
+                        bar.reload().await?;
                     }
 
-                    Ok::<(), (_, Error)>(())
-                });
-
-                match inner.await.unwrap() {
-                    Ok(()) => {
+                    BarMsg::ShutDown => {
+                        tracing::info!("shutting down");
+                        bar.shut_down(sig_handles).await;
                         break;
                     }
-                    Err((recv, error)) => {
-                        error!("refresh writer: {}", error);
-                        self.refresh_recv = recv;
+
+                    BarMsg::RefreshBlocks => {
+                        tracing::trace!("refreshing blocks");
+                        bar.refresh_blocks().await?;
                     }
                 }
             }
-        });
+            Ok(())
+        }
 
-        /* listen for cont and stop */
-        loop {
-            // cont_stop sender must not be dropped until it sends
-            // ContOrStop::Stop.
-            match self.cont_stop_recv.recv().await.unwrap() {
-                ContOrStop::Cont => {
-                    let span = span!(Level::TRACE, "bar_recv_cont");
-                    let _enter = span.enter();
+        let span = || span!(Level::INFO, "bar_listen", msg = field::Empty);
 
-                    /* reload configuration */
-                    trace!("received msg");
-                    info!("reloading config");
+        let mut sig_handles = self
+            .signal_handles()
+            .expect("signal handles must not yet be created");
 
-                    // read configuration
-                    match Config::read_from_path(&self.config.path) {
-                        Ok(config) => {
-                            self.config = config;
-
-                            {
-                                // halt all blocks
-                                let mut guard = self.blocks.lock().await;
-                                // self.blocks must never be both unlocked and None
-                                let blocks = guard.take().unwrap();
-                                for block in blocks {
-                                    block.halt().await;
-                                }
-
-                                // after taking, put back Some before releasing
-                                // the guard. this way, its None state is
-                                // inaccessible.
-                                *guard = Some(Vec::with_capacity(self.config.toml.blocks.len()));
-
-                                trace!("halted all blocks");
-                            }
-
-                            // add new blocks
-                            for block in self.config.toml.blocks {
-                                Self::push_block(
-                                    &self.blocks,
-                                    self.refresh_send.clone(),
-                                    self.config.command_dir.clone(),
-                                    block,
-                                    self.config.toml.body.clone(),
-                                )
-                                .await;
-                            }
-
-                            trace!("done reloading");
-                        }
-
-                        Err(error) => {
-                            error!(
-                                "reading config from '{}' failed: {}",
-                                self.config.path.display(),
-                                error,
-                            );
-                            info!("keeping current configuration");
-                        }
-                    }
-                }
-
-                ContOrStop::Stop => {
-                    let span = span!(Level::TRACE, "bar_recv_stop");
-                    let _enter = span.enter();
-
-                    /* we received stop signal */
-                    trace!("received msg");
-
-                    // halt each block. we do this first because blocks expect
-                    // self.refresh_recv to be alive.
-                    let mut guard = self.blocks.lock().await;
-                    // blocks must never be both unlocked and None.
-                    let blocks = guard.take().unwrap();
-                    for block in blocks {
-                        block.halt().await;
-                    }
-
-                    trace!("halted all blocks");
-
-                    // tell `refresh` to halt, now that all blocks are dropped
-                    trace!("sending halt to refresh loop");
-                    // refresh loop must not halt until it receives halt msg
-                    self.refresh_send.send(false).await.unwrap();
-                    trace!("waiting for refresh loop to halt");
-                    // refresh loop must not panic
-                    refresh.await.unwrap();
-
-                    break;
-                }
+        let result = inner(span, &mut self, &mut sig_handles).await;
+        match result {
+            Ok(()) => {}
+            Err(ref err) => {
+                let span = span();
+                let _enter = span.enter();
+                tracing::error!(
+                    err = format_args!("{err}"),
+                    "fatal error has occurred, shutting down"
+                );
+                self.shut_down(&mut sig_handles).await;
             }
         }
-
-        Ok(())
-    }
-
-    async fn push_block(
-        blocks: &Arc<Mutex<Option<Vec<Block>>>>,
-        refresh_send: mpsc::Sender<bool>,
-        cmd_dir: PathBuf,
-        block: TomlBlock,
-        global: Body,
-    ) {
-        let span = span!(Level::TRACE, "bar_push_block");
-        let _enter = span.enter();
-        if let Some(ref mut vec) = *blocks.lock().await {
-            let id = vec.len() + 1;
-            trace!(id, "pushed block");
-            vec.push(Block::new(block, global, refresh_send, cmd_dir, id).await);
-        } else {
-            unreachable!("blocks must not be pushed while the inner block vector is taken");
-        }
+        result
     }
 }
 
-/// Either a continue or stop signal.
-///
-/// See [`Smolbar::new`] for more details on how this is used.
-#[derive(Debug, Clone, Copy)]
-pub enum ContOrStop {
-    /// Continue signal (see
-    /// [`Header::cont_signal`](crate::protocol::Header::cont_signal))
-    Cont,
-    /// Stop signal (see
-    /// [`Header::stop_signal`](crate::protocol::Header::stop_signal))
-    Stop,
+impl Bar {
+    fn signal_handles(&mut self) -> Option<Vec<task::JoinHandle<()>>> {
+        self.signal_handles_created.then(|| {
+            self.signal_handles_created = true;
+            let mut handles = Vec::with_capacity(2);
+            let header = self.config.toml.header;
+            for (signum, action, debug_name) in [
+                (
+                    header.cont_signal.unwrap_or(Header::DEFAULT_CONT_SIG),
+                    BarMsg::Reload,
+                    "continue",
+                ),
+                (
+                    header.stop_signal.unwrap_or(Header::DEFAULT_STOP_SIG),
+                    BarMsg::ShutDown,
+                    "stop",
+                ),
+            ] {
+                let tx = self.tx.clone();
+                let handle = task::spawn(async move {
+                    let span = span!(Level::INFO, "sig_listener", signum, name = debug_name);
+
+                    let sig_kind = SignalKind::from_raw(signum);
+                    if let Ok(mut sig) = signal(sig_kind) {
+                        {
+                            let _enter = span.enter();
+                            tracing::trace!("signal is valid, listening");
+                        }
+
+                        while let Some(()) = sig.recv().await {
+                            let _enter = span.enter();
+                            tracing::trace!("received signal, sending {action:?} to bar");
+                            tx.send(action)
+                                .await
+                                .expect("signal handles must outlive Bar");
+                        }
+                    } else {
+                        let _enter = span.enter();
+                        // TODO: give more info
+                        tracing::warn!("failed to register signal listener");
+                    }
+                });
+                handles.push(handle);
+            }
+            handles
+        })
+    }
 }

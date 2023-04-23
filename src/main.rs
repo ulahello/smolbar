@@ -150,12 +150,22 @@ async fn try_main(args: Args) -> anyhow::Result<()> {
                 "Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>",
             ),
             (
+                "signal-hook-registry",
+                "Apache-2.0/MIT",
+                "Michal 'vorner' Vaner <vorner@vorner.cz>, Masaki Hara <ackie.h.gmai@gmail.com>",
+            ),
+            (
                 "termcolor",
                 "Unlicense OR MIT",
                 "Andrew Gallant <jamslam@gmail.com>",
             ),
             (
                 "tokio",
+                "MIT",
+                "Tokio Contributors <team@tokio.rs>",
+            ),
+            (
+                "tokio-util",
                 "MIT",
                 "Tokio Contributors <team@tokio.rs>",
             ),

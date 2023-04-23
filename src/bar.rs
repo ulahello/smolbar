@@ -255,8 +255,11 @@ impl Bar {
                         }
                     } else {
                         let _enter = span.enter();
-                        // TODO: give more info
-                        tracing::warn!("failed to register signal listener");
+                        if signal_hook_registry::FORBIDDEN.contains(&signum.as_raw()) {
+                            tracing::warn!("signal is invalid");
+                        } else {
+                            tracing::error!("failed to register signal listener");
+                        }
                     }
                 });
                 handles.push(handle);

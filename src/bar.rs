@@ -38,7 +38,8 @@ pub struct Bar {
 }
 
 impl Bar {
-    const CHANNEL_SIZE: usize = 1024; // arbitrary, but not too high. this is only 1KiB of bar messages.
+    /* arbitrary, but not too high. this is only 1KiB of bar messages. */
+    const CHANNEL_SIZE: usize = 1024;
 
     pub fn new(config: Config) -> (Self, mpsc::Sender<BarMsg>) {
         let (tx, rx) = mpsc::channel(Self::CHANNEL_SIZE);

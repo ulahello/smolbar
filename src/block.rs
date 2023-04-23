@@ -55,7 +55,8 @@ impl Block {
     ) -> (Self, CancellationToken) {
         let body = Arc::new(RwLock::new(Body::new()));
         let (tx, rx) = mpsc::channel(
-            // kinda arbitrary. this number tries to prevent hanging if a lot of blocks send a refresh request.
+            /* kinda arbitrary. this number tries to prevent hanging if a lot of
+             * blocks send a refresh request. */
             num_blocks.saturating_mul(2),
         );
         let cancel_parent = CancellationToken::new();

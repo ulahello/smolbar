@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.8.0] - 2023-04-22
 ### added
 * added global configuration key `smolbar_version` to specify version requirement for `smolbar`
 

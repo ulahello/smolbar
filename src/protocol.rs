@@ -67,6 +67,7 @@ impl fmt::Display for Signal {
     }
 }
 
+#[allow(clippy::enum_glob_use)]
 use Signal::*;
 
 /// Header object as defined in `swaybar-protocol(7)`.

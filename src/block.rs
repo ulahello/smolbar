@@ -10,8 +10,10 @@ use tokio_util::sync::CancellationToken;
 use tracing::{field, span, Level};
 
 use alloc::sync::Arc;
+use core::hash::{Hash, Hasher};
 use core::str::{self, FromStr, Lines};
 use core::time::Duration;
+use std::collections::hash_map::DefaultHasher;
 use std::path::PathBuf;
 
 use crate::bar::BarMsg;
@@ -155,6 +157,13 @@ impl Block {
             .or_else(|| global.clone());
         }
 
+        // compute hash of old body to later compare with new body
+        let old_body_hash: u64 = {
+            let mut hasher = DefaultHasher::new();
+            body.hash(&mut hasher);
+            hasher.finish()
+        };
+
         let mut lines = immediate;
         let toml = local;
 
@@ -273,12 +282,20 @@ impl Block {
         };
 
         /* request refresh since body has changed */
-        // TODO: check if body has actually changed
-        tracing::trace!("requesting bar refresh");
-        bar_tx
-            .send(BarMsg::RefreshBlocks)
-            .await
-            .expect("Bar must outlive its Blocks");
+        let new_body_hash: u64 = {
+            let mut hasher = DefaultHasher::new();
+            body.hash(&mut hasher);
+            hasher.finish()
+        };
+        if old_body_hash != new_body_hash {
+            tracing::trace!("requesting bar refresh");
+            bar_tx
+                .send(BarMsg::RefreshBlocks)
+                .await
+                .expect("Bar must outlive its Blocks");
+        } else {
+            tracing::trace!("body unchanged, suppressing refresh request");
+        }
     }
 
     async fn regenerate_body(&self, init: bool) {

@@ -9,7 +9,7 @@ use serde_derive::{Deserialize, Serialize};
 use core::str::FromStr;
 
 /// Header object as defined in `swaybar-protocol(7)`.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Header {
     /// "The protocol version to use. Currently, this must be 1"
@@ -51,7 +51,7 @@ impl Default for Header {
 }
 
 /// Body element as defined in `swaybar-protocol(7)`.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Body {
     /// "The text that will be displayed. If missing, the block will be skipped."
@@ -171,7 +171,7 @@ impl Default for Body {
 }
 
 /// [Body alignment](Body::align), as defined in `swaybar-protocol(7)`.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
 pub enum Align {
@@ -197,7 +197,7 @@ impl FromStr for Align {
 }
 
 /// [Body markup](Body::markup), as defined in `swaybar-protocol(7)`.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
 pub enum Markup {
@@ -220,7 +220,7 @@ impl FromStr for Markup {
 }
 
 /// Click event, as defined in `swaybar-protocol(7)`.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ClickEvent {
     /// "The name of the block, if set"

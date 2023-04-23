@@ -288,14 +288,14 @@ impl Block {
             body.hash(&mut hasher);
             hasher.finish()
         };
-        if old_body_hash != new_body_hash {
+        if old_body_hash == new_body_hash {
+            tracing::trace!("body unchanged, suppressing refresh request");
+        } else {
             tracing::trace!("requesting bar refresh");
             bar_tx
                 .send(BarMsg::RefreshBlocks)
                 .await
                 .expect("Bar must outlive its Blocks");
-        } else {
-            tracing::trace!("body unchanged, suppressing refresh request");
         }
     }
 

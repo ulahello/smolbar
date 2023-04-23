@@ -273,6 +273,7 @@ impl Block {
         };
 
         /* request refresh since body has changed */
+        // TODO: check if body has actually changed
         tracing::trace!("requesting bar refresh");
         bar_tx
             .send(BarMsg::RefreshBlocks)

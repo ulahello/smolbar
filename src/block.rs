@@ -282,7 +282,7 @@ impl Block {
             }
         };
 
-        /* request refresh since body has changed */
+        /* consider sending a refresh request */
         let new_body_hash: u64 = {
             let mut hasher = DefaultHasher::new();
             body.hash(&mut hasher);

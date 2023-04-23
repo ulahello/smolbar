@@ -1,3 +1,4 @@
+smolbar_version = "^0.8"
 command_dir = "blocks"
 separator_block_width = 16
 

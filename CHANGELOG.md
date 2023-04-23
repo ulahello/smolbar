@@ -21,6 +21,8 @@
     * `SIGUSR1`
     * `SIGUSR2`
     * `SIGWINCH`
+* rewrote most of codebase
+  * added `tokio-util` dependency
 * updated dependencies
 
 ## [0.7.3] - 2023-03-23

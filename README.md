@@ -47,10 +47,10 @@ each scope has a level of control over each block's `Body`: `immediate` has the 
 
 the `global` scope is configured at the root level of the config file.
 
-| key              | description                                                                                                                                                                                                     |
-|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| command\_dir     | sets the path to execute `local::command` in                                                                                                                                                                    |
-| smolbar\_version | requires that `smolbar --version` satisfies the given version requirement (parsed according to [Cargo's flavor of Semantic Versioning](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html)) |
+| key              | description                                                                                                                                                                                                         |
+|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| command\_dir     | sets the path to execute `local::command` in                                                                                                                                                                        |
+| smolbar\_version | requires that current smolbar version satisfies the given version requirement (parsed according to [Cargo's flavor of Semantic Versioning](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html)) |
 
 `global` also inherits all the keys in the `Body` JSON object defined in `swaybar-protocol(7)`.
 

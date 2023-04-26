@@ -88,7 +88,7 @@
   * not considering this breaking because this is intended to be used as a binary
 
 ### fixed
-* mistakes in `README.md`
+* mistakes in [README](./README.md)
 
 ## [0.5.4] - 2022-10-16
 ### changed
@@ -105,7 +105,7 @@
 
 ## [0.5.2] - 2022-09-23
 ### added
-* added more examples and explanation to README
+* added more examples and explanation to [README](./README.md)
 
 ### fixed
 * blank config file is now valid
@@ -183,7 +183,7 @@
 
 ### fixed
 * fixed slow shutdown with slow command
-* fixed incorrect documentation in README
+* fixed incorrect documentation in [README](./README.md)
 
 ## [0.1.1] - 2022-06-04
 ### changed

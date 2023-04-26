@@ -135,3 +135,13 @@ $ pkill -SIGUSR1 smolbar
 the header, fundamentally, can't be reconfigured during runtime.
 
 this is because in `swaybar-protocol(7)`, it's only sent once, at the beginning of the status command's process.
+
+## security considerations
+
+**by nature, `smolbar` executes arbitrary code** as defined in its configuration file.
+
+if an attacker can write to the configuration file, or to *any* of the files defined as commands, that attacker is able to execute arbitrary code (either immediately or when the config is reloaded).
+
+it is **your responsibility** to prevent this.
+it's a good idea to ensure that no other users are granted write permissions for the config file or its commands.
+however, measures you take will **depend on your situation**.

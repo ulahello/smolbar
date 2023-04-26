@@ -1,6 +1,9 @@
 # changelog
 
 ## [unreleased]
+### added
+* added security considerations to [README](./README.md)
+
 ### fixed
 * added `tokio-util` and `signal-hook-registry` to `smolbar --license`
 

@@ -4,8 +4,8 @@
 use tokio::process::Command;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::{mpsc, RwLock};
-use tokio::task::{self, JoinHandle};
-use tokio::time;
+use tokio::task::JoinHandle;
+use tokio::{task, time};
 use tokio_util::sync::CancellationToken;
 use tracing::{field, span, Level};
 

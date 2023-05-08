@@ -44,7 +44,7 @@ impl Blocks {
         assert!(self.inner.is_empty());
         let num_blocks = blocks.len();
         for (id, toml) in blocks.enumerate() {
-            let (block, tx) = Block::new(
+            let (block, token) = Block::new(
                 toml,
                 Arc::clone(&global_body),
                 Arc::clone(&command_dir),
@@ -54,7 +54,7 @@ impl Blocks {
             );
             let body = block.body();
             let handle = task::spawn(async move { block.listen().await });
-            self.inner.push((handle, tx, body));
+            self.inner.push((handle, token, body));
         }
     }
 

@@ -310,6 +310,21 @@ impl Block {
         );
 
         let mut immediate = String::new();
+        if init && self.toml.command.is_some() {
+            /* we check that there's a command because otherwise we're updating
+             * the body twice with the same immediate value */
+            let _enter = span.enter();
+            // initialize with empty immediate
+            Self::update_body(
+                immediate.lines(),
+                &self.global_body,
+                &self.toml,
+                &mut *self.body.write().await,
+                self.bar_tx.clone(),
+            )
+            .await;
+        }
+
         if let Some(ref program) = self.toml.command {
             let mut command = Command::new(program);
             command.kill_on_drop(true);

@@ -273,10 +273,12 @@ impl FromStr for Markup {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
-        match s.to_lowercase().as_ref() {
-            "pango" => Ok(Self::Pango),
-            "none" => Ok(Self::None),
-            _ => Err(()),
+        if s.eq_ignore_ascii_case("pango") {
+            Ok(Self::Pango)
+        } else if s.eq_ignore_ascii_case("none") {
+            Ok(Self::None)
+        } else {
+            Err(())
         }
     }
 }

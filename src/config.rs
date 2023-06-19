@@ -98,7 +98,7 @@ impl Config {
             .canonicalize()
             .context("failed to canonicalize config path")?;
 
-        let toml: TomlBar = {
+        let mut toml: TomlBar = {
             // TODO: would be nice to parse toml from `impl Read`
             let mut file = OpenOptions::new()
                 .read(true)
@@ -116,6 +116,12 @@ impl Config {
             let utf8 = str::from_utf8(&bytes).context("invalid utf-8")?;
             toml::from_str(utf8)?
         };
+
+        /* HACK: if full_text is not defined, we still want prefix and postfix
+         * to apply to it (it being "") */
+        if toml.body.full_text.is_none() {
+            toml.body.full_text = Some(String::new());
+        }
 
         /* check smolbar version */
         {

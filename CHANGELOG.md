@@ -6,6 +6,7 @@
 
 ### fixed
 * added `tokio-util` and `signal-hook-registry` to `smolbar --license`
+* fix prefix and postfix not appearing if full_text is not defined
 
 ## [0.8.0] - 2023-04-22
 ### added

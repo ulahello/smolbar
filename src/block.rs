@@ -15,6 +15,7 @@ use core::str::{self, FromStr, Lines};
 use core::time::Duration;
 use std::collections::hash_map::DefaultHasher;
 use std::path::PathBuf;
+use std::process::Stdio;
 
 use crate::bar::BarMsg;
 use crate::config::TomlBlock;
@@ -329,46 +330,56 @@ impl Block {
             let mut command = Command::new(program);
             command.kill_on_drop(true);
             command.current_dir(&*self.command_dir);
+            command.stdout(Stdio::piped());
+            command.stderr(Stdio::null());
+            command.stdin(Stdio::null());
             {
                 let _enter = span.enter();
                 tracing::trace!("executing command");
             }
-            tokio::select!(
-                _ = self.cancel.cancelled() => {
-                    let _enter = span.enter();
-                    tracing::trace!("command cancelled");
-                }
+            match command.spawn() {
+                Ok(child) => {
+                    tokio::select!(
+                        _ = self.cancel.cancelled() => {
+                            let _enter = span.enter();
+                            tracing::trace!("command cancelled");
+                        }
 
-                try_output = command.output() => {
-                    let _enter = span.enter();
-                    match try_output {
-                        Ok(output) => {
-                            span.record("exit_status", output.status.code());
-                            if !output.status.success() {
-                                tracing::warn!("command exited with failure");
-                            }
+                        try_output = child.wait_with_output() => {
+                            let _enter = span.enter();
+                            match try_output {
+                                Ok(output) => {
+                                    span.record("exit_status", output.status.code());
+                                    if !output.status.success() {
+                                        tracing::warn!("command exited with failure");
+                                    }
 
-                            match String::from_utf8(output.stdout) {
-                                Ok(stdout) => immediate = stdout,
+                                    match String::from_utf8(output.stdout) {
+                                        Ok(stdout) => immediate = stdout,
+
+                                        Err(err) => {
+                                            tracing::error!(
+                                                err = format_args!("{err}"),
+                                                "command produced invalid utf8"
+                                            );
+                                        }
+                                    }
+                                }
 
                                 Err(err) => {
-                                    tracing::error!(
-                                        err = format_args!("{err}"),
-                                        "command produced invalid utf8"
-                                    );
+                                    let _enter = span.enter();
+                                    tracing::error!(err = format_args!("{err}"), "failed to wait for child");
                                 }
                             }
                         }
-
-                        Err(err) => {
-                            tracing::error!(
-                                err = format_args!("{err}"),
-                                "failed to execute command"
-                            );
-                        }
-                    }
+                    );
                 }
-            );
+
+                Err(err) => {
+                    let _enter = span.enter();
+                    tracing::error!(err = format_args!("{err}"), "failed to execute command");
+                }
+            }
         }
 
         let _enter = span.enter();

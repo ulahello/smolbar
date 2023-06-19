@@ -31,7 +31,8 @@ pub struct Bar {
     config: Config,
     blocks: Blocks,
 
-    last_sent_hash: Option<u64>,
+    latest_blocks_hash: Option<u64>,
+    first_header_hash: Option<u64>,
 
     rx: mpsc::Receiver<BarMsg>,
     tx: mpsc::Sender<BarMsg>,
@@ -62,7 +63,8 @@ impl Bar {
             Self {
                 config,
                 blocks,
-                last_sent_hash: None,
+                latest_blocks_hash: None,
+                first_header_hash: None,
                 rx,
                 tx: tx.clone(),
                 stdout,
@@ -104,13 +106,35 @@ impl Bar {
 
         tracing::trace!("sent header");
 
+        if self.first_header_hash.is_none() {
+            let hash: u64 = {
+                let mut hasher = DefaultHasher::new();
+                self.config.toml.header.hash(&mut hasher);
+                hasher.finish()
+            };
+            self.first_header_hash = Some(hash);
+        }
+
         Ok(())
     }
 
     pub async fn reload(&mut self) -> anyhow::Result<()> {
-        // TODO: warn if header has changed, changes will not take effect
         let new_config =
             Config::read_from_path(&self.config.path).context("failed to reload config")?;
+
+        if let Some(old) = self.first_header_hash {
+            let new: u64 = {
+                let mut hasher = DefaultHasher::new();
+                new_config.toml.header.hash(&mut hasher);
+                hasher.finish()
+            };
+            if old != new {
+                tracing::warn!(
+                    "changes to the header will not take effect until smolbar is restarted"
+                );
+            }
+        }
+
         self.blocks.remove_all().await;
         self.config = new_config;
         // TODO: avoid cloning
@@ -152,7 +176,7 @@ impl Bar {
             }
             hasher.finish()
         };
-        if let Some(old_hash) = self.last_sent_hash {
+        if let Some(old_hash) = self.latest_blocks_hash {
             if old_hash == new_hash {
                 tracing::trace!("blocks unchanged, suppressing refresh");
                 return Ok(());
@@ -173,7 +197,7 @@ impl Bar {
         self.stdout.flush()?;
         tracing::trace!("sent block(s)");
 
-        self.last_sent_hash = Some(new_hash);
+        self.latest_blocks_hash = Some(new_hash);
 
         Ok(())
     }

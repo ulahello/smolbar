@@ -8,6 +8,9 @@
 * added `tokio-util` and `signal-hook-registry` to `smolbar --license`
 * fix prefix and postfix not appearing if full_text is not defined
 
+### changed
+* avoid sending the exact same sequence of blocks
+
 ## [0.8.0] - 2023-04-22
 ### added
 * added global configuration key `smolbar_version` to specify version requirement for `smolbar`

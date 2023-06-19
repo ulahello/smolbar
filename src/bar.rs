@@ -9,6 +9,8 @@ use tokio::task;
 use tracing::{field, span, Level};
 
 use alloc::sync::Arc;
+use core::hash::{Hash, Hasher};
+use std::collections::hash_map::DefaultHasher;
 use std::io::{stdout, BufWriter, StdoutLock, Write};
 
 use crate::blocks::Blocks;
@@ -28,6 +30,8 @@ pub enum BarMsg {
 pub struct Bar {
     config: Config,
     blocks: Blocks,
+
+    last_sent_hash: Option<u64>,
 
     rx: mpsc::Receiver<BarMsg>,
     tx: mpsc::Sender<BarMsg>,
@@ -58,6 +62,7 @@ impl Bar {
             Self {
                 config,
                 blocks,
+                last_sent_hash: None,
                 rx,
                 tx: tx.clone(),
                 stdout,
@@ -139,6 +144,21 @@ impl Bar {
         );
         let _enter = span.enter();
 
+        // make sure we're not sending the same sequence of blocks
+        let new_hash: u64 = {
+            let mut hasher = DefaultHasher::new();
+            for (_handle, _block_tx, body) in self.blocks.iter() {
+                body.read().await.hash(&mut hasher);
+            }
+            hasher.finish()
+        };
+        if let Some(old_hash) = self.last_sent_hash {
+            if old_hash == new_hash {
+                tracing::trace!("blocks unchanged, suppressing refresh");
+                return Ok(());
+            }
+        }
+
         write!(self.stdout, "[")?;
         for (idx, (_handle, _block_tx, body)) in self.blocks.iter().enumerate() {
             ser::to_writer_pretty(&mut self.stdout, &*body.read().await)?;
@@ -152,6 +172,8 @@ impl Bar {
 
         self.stdout.flush()?;
         tracing::trace!("sent block(s)");
+
+        self.last_sent_hash = Some(new_hash);
 
         Ok(())
     }

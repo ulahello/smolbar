@@ -10,6 +10,7 @@
 
 ### changed
 * avoid sending the same sequence of blocks multiple times
+* updated dependencies
 
 ## [0.8.0] - 2023-04-22
 ### added

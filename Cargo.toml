@@ -15,16 +15,16 @@ categories = ["command-line-utilities"]
 anyhow = "1.0.71"
 argh = "0.1.10"
 dirs = "5.0.1"
-libc = "0.2.143"
+libc = "0.2.146"
 semver = { version = "1.0.17", default-features = false, features = ["serde"] }
-serde = "1.0.162"
-serde_derive = "1.0.162"
-serde_json = "1.0.96"
+serde = "1.0.164"
+serde_derive = "1.0.164"
+serde_json = "1.0.97"
 signal-hook-registry = "1.4.1"
 termcolor = "1.2.0"
-tokio = { version = "1.28.0", default-features = false, features = ["time", "signal", "process", "sync", "rt", "macros"] }
+tokio = { version = "1.28.2", default-features = false, features = ["time", "signal", "process", "sync", "rt", "macros"] }
 tokio-util = { version = "0.7.8", default-features = false }
-toml = { version = "0.7.3", default-features = false, features = ["parse", "preserve_order"] }
+toml = { version = "0.7.4", default-features = false, features = ["parse", "preserve_order"] }
 tracing = { version = "0.1.37", default-features = false, features = ["attributes"] }
 tracing-subscriber = { version = "0.3.17", default-features = false, features = ["ansi"] }
 

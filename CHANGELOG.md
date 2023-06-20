@@ -9,7 +9,7 @@
 * fix prefix and postfix not appearing if full_text is not defined
 
 ### changed
-* avoid sending the exact same sequence of blocks
+* avoid sending the same sequence of blocks multiple times
 
 ## [0.8.0] - 2023-04-22
 ### added

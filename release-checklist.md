@@ -1,6 +1,7 @@
 - [ ] `cargo upgrade`
 - [ ] `cargo clippy`
 - [ ] `cargo deny check`
+- [ ] `cargo msrv verify`
 - [ ] bump version in `Cargo.toml`
 - [ ] bump version in `Cargo.lock`
 - [ ] bump version in `CHANGELOG.md`

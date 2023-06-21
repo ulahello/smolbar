@@ -5,7 +5,7 @@
 * added security considerations to [README](./README.md)
 
 ### fixed
-* added `tokio-util` and `signal-hook-registry` to `smolbar --license`
+* added `tokio-util`, `signal-hook-registry`, and `semver` to `smolbar --license`
 * fix prefix and postfix not appearing if full_text is not defined
 
 ### changed

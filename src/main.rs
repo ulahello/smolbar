@@ -130,6 +130,11 @@ async fn try_main(args: Args) -> anyhow::Result<()> {
                 "The Rust Project Developers",
             ),
             (
+                "semver",
+                "MIT OR Apache-2.0",
+                "David Tolnay <dtolnay@gmail.com>",
+            ),
+            (
                 "serde",
                 "MIT OR Apache-2.0",
                 "Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>",

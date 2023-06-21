@@ -14,11 +14,11 @@ extern crate alloc;
 
 use anyhow::Context;
 use argh::FromArgs;
-use dirs::config_dir;
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 use tokio::task;
-use tracing::Level;
+use tracing::{span, Level};
 
+use std::env;
 use std::io::{self, stderr, stdout, BufWriter, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -125,11 +125,6 @@ async fn try_main(args: Args) -> anyhow::Result<()> {
                 "Taylor Cramer <cramertj@google.com>, Benjamin Brittain <bwb@google.com>, Erick Tryzelaar <etryzelaar@google.com>",
             ),
             (
-                "dirs",
-                "MIT OR Apache-2.0",
-                "Simon Ochsenreither <simon@ochsenreither.de>",
-            ),
-            (
                 "libc",
                 "MIT OR Apache-2.0",
                 "The Rust Project Developers",
@@ -194,13 +189,28 @@ async fn try_main(args: Args) -> anyhow::Result<()> {
     }
 
     /* get configuration file */
-    let path = match args.config {
-        Some(path) => path,
-        None => {
-            if let Some(mut fallback) = config_dir() {
-                fallback.push("smolbar");
-                fallback.push("config.toml");
-                fallback
+    let path = {
+        let span = span!(Level::TRACE, "get_config_path");
+        let _enter = span.enter();
+        if let Some(path) = args.config {
+            tracing::trace!("using value of `--config`");
+            path
+        } else {
+            let config_dir = if let Some(xdg_config_home) = env::var_os("XDG_CONFIG_HOME") {
+                tracing::trace!("using $XDG_CONFIG_HOME");
+                Some(PathBuf::from(xdg_config_home))
+            } else if let Some(home) = env::var_os("HOME") {
+                tracing::trace!("using $HOME");
+                let mut dir = PathBuf::from(home);
+                dir.push(".config");
+                Some(dir)
+            } else {
+                None
+            };
+            if let Some(mut dir) = config_dir {
+                dir.push("smolbar");
+                dir.push("config.toml");
+                dir
             } else {
                 return Err(anyhow::anyhow!(
                     "no configuration path found (try passing one with `--config`)"

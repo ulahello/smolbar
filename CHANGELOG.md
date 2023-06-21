@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.8.1] - 2023-06-20
 ### added
 * added security considerations to [README](./README.md)
 

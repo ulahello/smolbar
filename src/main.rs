@@ -14,7 +14,7 @@ extern crate alloc;
 
 use anyhow::Context;
 use argh::FromArgs;
-use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
+use nu_ansi_term::Color;
 use tokio::task;
 use tracing::{span, Level};
 
@@ -48,28 +48,15 @@ struct Args {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
-    fn pretty_err(err: anyhow::Error) -> io::Result<()> {
-        let bufwtr = BufferWriter::stderr(ColorChoice::Auto);
-        let mut buffer = bufwtr.buffer();
-        let mut spec = ColorSpec::new();
-        buffer.set_color(spec.set_fg(Some(Color::Red)))?;
-        write!(&mut buffer, "error: ")?;
-        spec.clear();
-        buffer.set_color(&spec)?;
-        writeln!(&mut buffer, "{err}")?;
-
+    fn pretty_err<W: Write>(mut out: W, err: anyhow::Error) -> io::Result<()> {
+        writeln!(out, "{} {err}", Color::Red.paint("error:"))?;
         if err.chain().nth(1).is_some() {
-            buffer.set_color(spec.set_fg(Some(Color::Red)))?;
-            writeln!(&mut buffer, "because:")?;
-            spec.clear();
-            buffer.set_color(&spec)?;
+            writeln!(out, "{}", Color::Red.paint("because:"))?;
         }
         for cause in err.chain().skip(1) {
-            writeln!(&mut buffer, "  {cause}")?;
+            writeln!(out, "  {cause}")?;
         }
-        drop(err);
-
-        bufwtr.print(&buffer)
+        out.flush()
     }
 
     let args: Args = argh::from_env();
@@ -85,7 +72,7 @@ async fn main() -> ExitCode {
 
     #[allow(let_underscore_drop)]
     if let Err(err) = try_main(args).await {
-        _ = pretty_err(err);
+        _ = pretty_err(stderr(), err);
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS
@@ -130,6 +117,11 @@ async fn try_main(args: Args) -> anyhow::Result<()> {
                 "The Rust Project Developers",
             ),
             (
+                "nu-ansi-term",
+                "MIT",
+                "ogham@bsago.me, Ryan Scheel (Havvy) <ryan.havvy@gmail.com>, Josh Triplett <josh@joshtriplett.org>, The Nushell Project Developers",
+            ),
+            (
                 "semver",
                 "MIT OR Apache-2.0",
                 "David Tolnay <dtolnay@gmail.com>",
@@ -153,11 +145,6 @@ async fn try_main(args: Args) -> anyhow::Result<()> {
                 "signal-hook-registry",
                 "Apache-2.0/MIT",
                 "Michal 'vorner' Vaner <vorner@vorner.cz>, Masaki Hara <ackie.h.gmai@gmail.com>",
-            ),
-            (
-                "termcolor",
-                "Unlicense OR MIT",
-                "Andrew Gallant <jamslam@gmail.com>",
             ),
             (
                 "tokio",

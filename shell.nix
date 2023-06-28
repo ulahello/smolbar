@@ -1,4 +1,4 @@
 { pkgs ? import <nixpkgs> {} }:
 pkgs.mkShell {
-  nativeBuildInputs = with pkgs.buildPackages; [ gnumake scdoc ];
+  nativeBuildInputs = with pkgs.buildPackages; [ cargo gnumake scdoc ];
 }

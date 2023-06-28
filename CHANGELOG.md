@@ -3,6 +3,7 @@
 ## [unreleased]
 ### added
 * added man pages `smolbar(1)` and `smolbar(5)`
+* added full and transitive copyright information to docs and `--license`
 * added warning if header version is invalid
 * added explicit compile error when not compiling on unix platform
 

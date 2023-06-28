@@ -10,16 +10,15 @@ use tokio_util::sync::CancellationToken;
 use tracing::{field, span, Level};
 
 use alloc::sync::Arc;
-use core::hash::{Hash, Hasher};
 use core::str::{self, FromStr, Lines};
 use core::time::Duration;
-use std::collections::hash_map::DefaultHasher;
 use std::path::PathBuf;
 use std::process::Stdio;
 
 use crate::bar::BarMsg;
 use crate::config::TomlBlock;
 use crate::protocol::Body;
+use crate::Hash;
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Copy, Debug)]
@@ -161,11 +160,7 @@ impl Block {
         }
 
         // compute hash of old body to later compare with new body
-        let old_body_hash: u64 = {
-            let mut hasher = DefaultHasher::new();
-            body.hash(&mut hasher);
-            hasher.finish()
-        };
+        let old_body_hash = crate::Hash::new(body);
 
         let mut lines = immediate;
         let toml = local;
@@ -285,11 +280,7 @@ impl Block {
         };
 
         /* consider sending a refresh request */
-        let new_body_hash: u64 = {
-            let mut hasher = DefaultHasher::new();
-            body.hash(&mut hasher);
-            hasher.finish()
-        };
+        let new_body_hash = Hash::new(body);
         if old_body_hash == new_body_hash {
             tracing::trace!("body unchanged, suppressing refresh request");
         } else {

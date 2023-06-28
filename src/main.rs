@@ -18,6 +18,8 @@ use nu_ansi_term::Color;
 use tokio::task;
 use tracing::{span, Level};
 
+use core::hash::{Hash as HashTrait, Hasher};
+use std::collections::hash_map::DefaultHasher;
 use std::env;
 use std::io::{self, stderr, stdout, BufWriter, Write};
 use std::path::PathBuf;
@@ -255,5 +257,16 @@ async fn await_cancellable<T>(handle: task::JoinHandle<T>) -> Option<T> {
             }
             None
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Hash(u64);
+
+impl Hash {
+    pub fn new<T: HashTrait>(item: &T) -> Self {
+        let mut hasher = DefaultHasher::new();
+        item.hash(&mut hasher);
+        Self(hasher.finish())
     }
 }

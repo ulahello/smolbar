@@ -9,13 +9,14 @@ use tokio::task;
 use tracing::{field, span, Level};
 
 use alloc::sync::Arc;
-use core::hash::{Hash, Hasher};
+use core::hash::{Hash as HashTrait, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use std::io::{stdout, BufWriter, StdoutLock, Write};
 
 use crate::blocks::Blocks;
 use crate::config::Config;
 use crate::protocol::Header;
+use crate::Hash;
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone, Copy, Debug)]
@@ -31,8 +32,8 @@ pub struct Bar {
     config: Config,
     blocks: Blocks,
 
-    latest_blocks_hash: Option<u64>,
-    first_header_hash: Option<u64>,
+    latest_blocks_hash: Option<Hash>,
+    first_header_hash: Option<Hash>,
 
     rx: mpsc::Receiver<BarMsg>,
     tx: mpsc::Sender<BarMsg>,
@@ -107,11 +108,7 @@ impl Bar {
         tracing::trace!("sent header");
 
         if self.first_header_hash.is_none() {
-            let hash: u64 = {
-                let mut hasher = DefaultHasher::new();
-                self.config.toml.header.hash(&mut hasher);
-                hasher.finish()
-            };
+            let hash = Hash::new(&self.config.toml.header);
             self.first_header_hash = Some(hash);
         }
 
@@ -123,11 +120,7 @@ impl Bar {
             Config::read_from_path(&self.config.path).context("failed to reload config")?;
 
         if let Some(old) = self.first_header_hash {
-            let new: u64 = {
-                let mut hasher = DefaultHasher::new();
-                new_config.toml.header.hash(&mut hasher);
-                hasher.finish()
-            };
+            let new = Hash::new(&new_config.toml.header);
             if old != new {
                 tracing::warn!(
                     "changes to the header will not take effect until smolbar is restarted"
@@ -169,12 +162,12 @@ impl Bar {
         let _enter = span.enter();
 
         // make sure we're not sending the same sequence of blocks
-        let new_hash: u64 = {
+        let new_hash = {
             let mut hasher = DefaultHasher::new();
             for (_handle, _block_tx, body) in self.blocks.iter() {
                 body.read().await.hash(&mut hasher);
             }
-            hasher.finish()
+            Hash(hasher.finish())
         };
         if let Some(old_hash) = self.latest_blocks_hash {
             if old_hash == new_hash {

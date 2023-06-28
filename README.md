@@ -118,13 +118,13 @@ full_text = "never see global full_text"
 
 All local scopes are tables in the table array `block`.
 
-| key      | type   | description                                         |
-|----------|--------|-----------------------------------------------------|
-| command  | string | command to execute[^6] for new content              |
-| prefix   | string | prefixes `full_text`                                |
-| postfix  | string | appended to `full_text`                             |
-| interval | number | interval, in seconds, at which to refresh the block |
-| signal   | string | OS signal name to refresh the block when received   |
+| key      | type   | description                                                      |
+|----------|--------|------------------------------------------------------------------|
+| command  | string | command to execute[^6] in full[^7] for new content               |
+| prefix   | string | prefixes `full_text`                                             |
+| postfix  | string | appended to `full_text`                                          |
+| interval | number | interval, in seconds, at which to periodically refresh the block |
+| signal   | string | OS signal name to refresh the block when received                |
 
 The following signals are currently supported:
 
@@ -153,6 +153,7 @@ interval = 1
 ```
 
 [^6]: The command is not currently passed to a shell, so if you try to pass arguments it will fail.
+[^7]: A refresh will not disrupt the execution of the command, it will wait until the command finishes.
 
 #### Immediate scope
 

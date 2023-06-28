@@ -11,6 +11,7 @@
 * overhauled [README](./README.md)
 * replaced `termcolor` dependency with `nu-ansi-term`
   * `nu-ansi-term` is already in the dependency tree (from `tracing-subscriber`) and is simpler for smolbar's use case
+* updated dependencies
 
 ## [0.8.1] - 2023-06-20
 ### added

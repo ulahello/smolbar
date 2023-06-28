@@ -43,11 +43,11 @@ In order for their content to change, they need both a "what" and a "when".
 
 The "what" is implemented by giving blocks a command to execute.
 The entire `Body` JSON object is filled in with the output of this command.
-See TODO: config command
 
 The "when" is currently implemented in two ways: periodic intervals and OS signals.
 The "what" gets refreshed according to the "when": at periodic intervals, and whenever `smolbar` receives a specific signal.
-See TODO: config interval & signal
+
+See [local scope configuration](#local-scope).
 
 [^3]: There are a few keys outside of `Body` used by the configuration, such as `prefix` and `postfix`.
 

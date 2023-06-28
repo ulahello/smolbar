@@ -28,32 +28,28 @@ bar {
 ## Mental model
 
 `smolbar` fulfills the role described by `swaybar-protocol(7)`[^1].
-As the user, you can configure `smolbar`'s behavior and what data it sends[^2] through its configuration.
+The user controls `smolbar`'s behavior through its configuration file.
 Note that its configurable behavior is a superset of the behavior outlined in the protocol.
 
 [^1]: It's a good idea to read through this man page if you're having issues configuring or understanding `smolbar`.
-[^2]: Send, meaning write data to standard output. In the context of the protocol, this write is semantically a send.
 
 ### Block
 
 A block is a unit of refreshable content.
-The structure of this content is defined[^3] by the `Body` JSON object from the protocol.
-However, blocks hold additional information to make them useful.
-In order for their content to change, they need both a "what" and a "when".
+The structure of this content is defined by the `Body` JSON object from the protocol, with additional information to make them useful.
+To be dynamic, blocks require both a "what" (a source of content) and a "when" (when to refresh the content).
 
 The "what" is implemented by giving blocks a command to execute.
 The entire `Body` JSON object is filled in with the output of this command.
 
-The "when" is currently implemented in two ways: periodic intervals and OS signals.
-The "what" gets refreshed according to the "when": at periodic intervals, and whenever `smolbar` receives a specific signal.
+The "when" is currently implemented in two ways: periodic intervals and operating system signals.
+This means that a block's content gets refreshed on a timer and whenever `smolbar` receives a specific signal.
 
 See [local scope configuration](#local-scope).
 
-[^3]: There are a few keys outside of `Body` used by the configuration, such as `prefix` and `postfix`.
-
 ### Bar
 
-The bar is the owner of blocks[^4].
+The bar is the owner of blocks[^2].
 The core behavior of `smolbar` is to send the bar's blocks whenever a block has new content.
 
 The bar is also responsible for responding to `cont_signal` and `stop_signal`, which it sends in the `Header` JSON object (also from the protocol).
@@ -61,11 +57,11 @@ If it receives `stop_signal`, `smolbar` will gracefully shut down, as per spec.
 Upon receiving `cont_signal`, `smolbar` will reload its configuration.
 Note that `smolbar` has given new meaning to `cont_signal`, since the meaning described by the protocol isn't particularly applicable.
 
-[^4]: Outside of the codebase, "bar" isn't a very useful abstraction, and could be thought of as `smolbar` itself.
+[^2]: Outside of the codebase, "bar" isn't a very useful abstraction, and could be thought of as `smolbar` itself.
 
 ## Configuration
 
-`smolbar` is configured through a TOML file.
+`smolbar` is configured in a TOML file.
 
 If `--config` is not specified as an argument, `smolbar` looks for a file named `config.toml` in `$XDG_CONFIG_HOME/smolbar` or `$HOME/.config/smolbar`.
 
@@ -78,13 +74,13 @@ It inherits all keys verbatim from `Header`.
 
 ```toml
 [header]
-cont_signal = "SIGCONT" # default value, as per `swaybar-protocol(7)`
+cont_signal = "SIGCONT" # default value, as per swaybar-protocol(7)
 stop_signal = "SIGINT"
 ```
 
 ### Blocks
 
-There are three scopes at which the content[^5] and behavior of blocks can be defined.
+There are three scopes at which the content[^3] and behavior of blocks can be defined.
 
 - "Global" scope has the lowest precedence, but applies to all blocks.
 - "Local" scope is defined per block.
@@ -92,7 +88,7 @@ There are three scopes at which the content[^5] and behavior of blocks can be de
 
 This means that the global and local scopes can be used to give `Body` properties default values, while immediate scopes are useful for properties that change.
 
-[^5]: "Content of the blocks" refers to a superset of the properties of the `Body` JSON object defined by `swaybar-protocol(7)`. More information on this is found in the [mental model](#mental-model) section.
+[^3]: "Content of the blocks" refers to a superset of the properties of the `Body` JSON object defined by `swaybar-protocol(7)`. More information on this is found in the [mental model](#mental-model) section.
 
 #### Global scope
 
@@ -100,14 +96,16 @@ The global scope is configured at the root level of the configuration file.
 
 | key              | type   | description                                                                                                                                                                                                           |
 |------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| command\_dir     | string | sets the directory to execute `command` (defined in local scope) in                                                                                                                                                   |
-| smolbar\_version | string | requires that current `smolbar` version satisfies the given version requirement (parsed according to [Cargo's flavor of Semantic Versioning](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html)) |
+| command\_dir     | string | sets the directory in which to execute `command` (defined in local scope)                                                                                                                                             |
+| smolbar\_version | string | requires the current `smolbar` version to satisfy the given version requirement (parsed according to [Cargo's flavor of Semantic Versioning](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html)) |
 
 The global scope also inherits all the properties from the `Body` JSON object defined by `swaybar-protocol(7)`.
 
+For example:
+
 ```toml
 # global
-full_text = "only visible in a block if no other scopes define full_text"
+full_text = "only visible if no other scopes define full_text"
 
 [[block]]
 # local
@@ -120,29 +118,15 @@ All local scopes are tables in the table array `block`.
 
 | key      | type   | description                                                      |
 |----------|--------|------------------------------------------------------------------|
-| command  | string | command to execute[^6] in full[^7] for new content               |
+| command  | string | path of command to execute in full[^4] for new content           |
 | prefix   | string | prefixes `full_text`                                             |
 | postfix  | string | appended to `full_text`                                          |
 | interval | number | interval, in seconds, at which to periodically refresh the block |
-| signal   | string | OS signal name to refresh the block when received                |
-
-The following signals are currently supported:
-
-- `SIGALRM`
-- `SIGCHLD`
-- `SIGCONT`
-- `SIGHUP`
-- `SIGINT`
-- `SIGIO`
-- `SIGPIPE`
-- `SIGQUIT`
-- `SIGSTOP`
-- `SIGTERM`
-- `SIGUSR1`
-- `SIGUSR2`
-- `SIGWINCH`
+| signal   | string | operating system signal name to refresh the block when received  |
 
 The local scope inherits all other keys from `Body`.
+
+For example:
 
 ```toml
 [[block]]
@@ -152,8 +136,7 @@ prefix = "Today is "
 interval = 1
 ```
 
-[^6]: The command is not currently passed to a shell, so if you try to pass arguments it will fail.
-[^7]: A refresh will not disrupt the execution of the command, it will wait until the command finishes.
+[^4]: A refresh will not disrupt the execution of the command, it will wait until the command finishes.
 
 #### Immediate scope
 
@@ -181,7 +164,7 @@ This means that by default, sending `smolbar`'s process `SIGCONT` will cause it 
 
 ```toml
 [header]
-# cont_signal is SIGCONT by default, as per `swaybar-protocol(7)`
+# cont_signal is SIGCONT by default, as per swaybar-protocol(7)
 ```
 
 ```console
@@ -203,6 +186,24 @@ $ pkill -SIGUSR1 smolbar
 
 Note that the header cannot be reconfigured during runtime.
 This is because in `swaybar-protocol(7)`, it's only sent once, at the beginning of the status command's process.
+
+## Supported signals
+
+The following operating system signals are currently supported:
+
+- `SIGALRM`
+- `SIGCHLD`
+- `SIGCONT`
+- `SIGHUP`
+- `SIGINT`
+- `SIGIO`
+- `SIGPIPE`
+- `SIGQUIT`
+- `SIGSTOP`
+- `SIGTERM`
+- `SIGUSR1`
+- `SIGUSR2`
+- `SIGWINCH`
 
 ## Security considerations
 

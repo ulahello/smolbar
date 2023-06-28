@@ -51,7 +51,7 @@ file.
    local scope)
 |  _smolbar_version_
 :  string
-:  requires that current *smolbar* version satisfies the given version
+:  requires the current *smolbar* version to satisfy the given version
    requirement (parsed according to Cargo's flavor of Semantic
    Versioning, see https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html)
 

@@ -4,6 +4,7 @@
 ### added
 * added man pages `smolbar(1)` and `smolbar(5)`
 * added warning if header version is invalid
+* added explicit compile error when not compiling on unix platform
 
 ### changed
 * overhauled [README](./README.md)

@@ -4,6 +4,9 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::pedantic, clippy::cargo)]
 
+#[cfg(not(unix))]
+compile_error!("smolbar only supports Unix platforms");
+
 mod bar;
 mod block;
 mod blocks;

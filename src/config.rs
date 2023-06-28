@@ -22,7 +22,7 @@ use crate::protocol::{Body, Header, Signal};
 pub struct TomlBar {
     command_dir: Option<String>,
     #[serde(default = "TomlBar::default_smolbar_version_req")]
-    pub smolbar_version: VersionReq,
+    smolbar_version: VersionReq,
     /// Configured [`Header`]
     #[serde(default = "Header::default")]
     pub header: Header,

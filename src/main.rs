@@ -48,6 +48,7 @@ struct Args {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
+    #[allow(clippy::needless_pass_by_value)]
     fn pretty_err<W: Write>(mut out: W, err: anyhow::Error) -> io::Result<()> {
         writeln!(out, "{} {err}", Color::Red.paint("error:"))?;
         if err.chain().nth(1).is_some() {
@@ -79,104 +80,115 @@ async fn main() -> ExitCode {
     }
 }
 
+fn print_version<W: Write>(mut out: W) -> io::Result<()> {
+    writeln!(
+        out,
+        "{} {}",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    )
+}
+
+fn print_license<W: Write>(mut out: W) -> io::Result<()> {
+    // NOTE: volatile, copypasted data
+    const PACKAGES: [(
+        &str, // crate
+        &str, // license
+        &str, // authors
+    ); 15] = [
+        (
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_LICENSE"),
+            env!("CARGO_PKG_AUTHORS"),
+        ),
+        (
+            "anyhow",
+            "MIT OR Apache-2.0",
+            "David Tolnay <dtolnay@gmail.com>",
+        ),
+        (
+            "argh",
+            "BSD-3-Clause",
+            "Taylor Cramer <cramertj@google.com>, Benjamin Brittain <bwb@google.com>, Erick Tryzelaar <etryzelaar@google.com>",
+        ),
+        (
+            "libc",
+            "MIT OR Apache-2.0",
+            "The Rust Project Developers",
+        ),
+        (
+            "nu-ansi-term",
+            "MIT",
+            "ogham@bsago.me, Ryan Scheel (Havvy) <ryan.havvy@gmail.com>, Josh Triplett <josh@joshtriplett.org>, The Nushell Project Developers",
+        ),
+        (
+            "semver",
+            "MIT OR Apache-2.0",
+            "David Tolnay <dtolnay@gmail.com>",
+        ),
+        (
+            "serde",
+            "MIT OR Apache-2.0",
+            "Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>",
+        ),
+        (
+            "serde_derive",
+            "MIT OR Apache-2.0",
+            "Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>",
+        ),
+        (
+            "serde_json",
+            "MIT OR Apache-2.0",
+            "Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>",
+        ),
+        (
+            "signal-hook-registry",
+            "Apache-2.0/MIT",
+            "Michal 'vorner' Vaner <vorner@vorner.cz>, Masaki Hara <ackie.h.gmai@gmail.com>",
+        ),
+        (
+            "tokio",
+            "MIT",
+            "Tokio Contributors <team@tokio.rs>",
+        ),
+        (
+            "tokio-util",
+            "MIT",
+            "Tokio Contributors <team@tokio.rs>",
+        ),
+        (
+            "toml",
+            "MIT OR Apache-2.0",
+            "Alex Crichton <alex@alexcrichton.com>",
+        ),
+        (
+            "tracing",
+            "MIT",
+            "Eliza Weisman <eliza@buoyant.io>, Tokio Contributors <team@tokio.rs>",
+        ),
+        (
+            "tracing-subscriber",
+            "MIT",
+            "Eliza Weisman <eliza@buoyant.io>, David Barsky <me@davidbarsky.com>, Tokio Contributors <team@tokio.rs>",
+        ),
+    ];
+    for (name, license, owners) in PACKAGES {
+        writeln!(out, "'{name}' by {owners}, licensed under '{license}'")?;
+    }
+    Ok(())
+}
+
 async fn try_main(args: Args) -> anyhow::Result<()> {
     /* print version */
     if args.version {
-        writeln!(
-            stdout(),
-            "{} {}",
-            env!("CARGO_PKG_NAME"),
-            env!("CARGO_PKG_VERSION")
-        )?;
+        print_version(stdout())?;
         return Ok(());
     }
 
     /* print license information */
     if args.license {
-        let mut stdout = BufWriter::new(stdout());
-        // NOTE: volatile, copypasted data
-        for (name, license, owners) in [
-            (
-                env!("CARGO_PKG_NAME"),
-                env!("CARGO_PKG_LICENSE"),
-                env!("CARGO_PKG_AUTHORS"),
-            ),
-            (
-                "anyhow",
-                "MIT OR Apache-2.0",
-                "David Tolnay <dtolnay@gmail.com>",
-            ),
-            (
-                "argh",
-                "BSD-3-Clause",
-                "Taylor Cramer <cramertj@google.com>, Benjamin Brittain <bwb@google.com>, Erick Tryzelaar <etryzelaar@google.com>",
-            ),
-            (
-                "libc",
-                "MIT OR Apache-2.0",
-                "The Rust Project Developers",
-            ),
-            (
-                "nu-ansi-term",
-                "MIT",
-                "ogham@bsago.me, Ryan Scheel (Havvy) <ryan.havvy@gmail.com>, Josh Triplett <josh@joshtriplett.org>, The Nushell Project Developers",
-            ),
-            (
-                "semver",
-                "MIT OR Apache-2.0",
-                "David Tolnay <dtolnay@gmail.com>",
-            ),
-            (
-                "serde",
-                "MIT OR Apache-2.0",
-                "Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>",
-            ),
-            (
-                "serde_derive",
-                "MIT OR Apache-2.0",
-                "Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>",
-            ),
-            (
-                "serde_json",
-                "MIT OR Apache-2.0",
-                "Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>",
-            ),
-            (
-                "signal-hook-registry",
-                "Apache-2.0/MIT",
-                "Michal 'vorner' Vaner <vorner@vorner.cz>, Masaki Hara <ackie.h.gmai@gmail.com>",
-            ),
-            (
-                "tokio",
-                "MIT",
-                "Tokio Contributors <team@tokio.rs>",
-            ),
-            (
-                "tokio-util",
-                "MIT",
-                "Tokio Contributors <team@tokio.rs>",
-            ),
-            (
-                "toml",
-                "MIT OR Apache-2.0",
-                "Alex Crichton <alex@alexcrichton.com>",
-            ),
-            (
-                "tracing",
-                "MIT",
-                "Eliza Weisman <eliza@buoyant.io>, Tokio Contributors <team@tokio.rs>",
-            ),
-            (
-                "tracing-subscriber",
-                "MIT",
-                "Eliza Weisman <eliza@buoyant.io>, David Barsky <me@davidbarsky.com>, Tokio Contributors <team@tokio.rs>",
-            ),
-        ] {
-            writeln!(
-                stdout,
-                "'{name}' by {owners}, licensed under '{license}'",
-            )?;
-        }
+        let stdout = BufWriter::new(stdout());
+        print_license(stdout)?;
         return Ok(());
     }
 

@@ -134,6 +134,7 @@ impl Block {
 }
 
 impl Block {
+    #[allow(clippy::too_many_lines)]
     async fn update_body(
         immediate: Lines<'_>,
         global: &Body,

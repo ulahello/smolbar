@@ -62,7 +62,7 @@ For example:
 
 ```
 # global
-full_text = "only visible in a block if no other scopes define full_text"
+full_text = "only visible if no other scopes define full_text"
 
 [[block]]
 # local

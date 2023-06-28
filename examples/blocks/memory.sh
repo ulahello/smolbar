@@ -2,11 +2,11 @@
 
 parsed=$(free -h | awk 'NR == 2 {print $3; print $7} NR == 3 {print $3; print $4}')
 
-mem_used=$(printf "${parsed}" | sed "1q;d")
-mem_available=$(printf "${parsed}" | sed "2q;d")
+mem_used=$(printf '%s' "${parsed}" | sed "1q;d")
+mem_available=$(printf '%s' "${parsed}" | sed "2q;d")
 
-swap_used=$(printf "${parsed}" | sed "3q;d")
-swap_available=$(printf "${parsed}" | sed "4q;d")
+swap_used=$(printf '%s' "${parsed}" | sed "3q;d")
+swap_available=$(printf '%s' "${parsed}" | sed "4q;d")
 
 if [ "${1}" = "mem" ]; then
     used="${mem_used}"

@@ -94,7 +94,7 @@ This means that the global and local scopes can be used to give `Body` propertie
 
 The global scope is configured at the root level of the configuration file.
 
-| key              | type   | description                                                                                                                                                                                                           |
+| Key              | Type   | Description                                                                                                                                                                                                           |
 |------------------|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | command\_dir     | string | sets the directory in which to execute `command` (defined in local scope)                                                                                                                                             |
 | smolbar\_version | string | requires the current `smolbar` version to satisfy the given version requirement (parsed according to [Cargo's flavor of Semantic Versioning](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html)) |
@@ -116,7 +116,7 @@ full_text = "never see global full_text"
 
 All local scopes are tables in the table array `block`.
 
-| key      | type   | description                                                      |
+| Key      | Type   | Description                                                      |
 |----------|--------|------------------------------------------------------------------|
 | command  | string | path of command to execute in full[^4] for new content           |
 | prefix   | string | prefixes `full_text`                                             |

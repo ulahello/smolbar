@@ -117,6 +117,15 @@ impl Config {
             toml::from_str(utf8)?
         };
 
+        /* check version, just in case */
+        if toml.header.version != Header::DEFAULT_VERSION {
+            tracing::warn!(
+                header.version = toml.header.version,
+                "swaybar-protocol(7) requires header.version to be {default}",
+                default = Header::DEFAULT_VERSION
+            );
+        }
+
         /* HACK: if full_text is not defined, we still want prefix and postfix
          * to apply to it (it being "") */
         if toml.body.full_text.is_none() {

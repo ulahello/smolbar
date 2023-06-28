@@ -1,6 +1,9 @@
 # changelog
 
 ## [unreleased]
+### added
+* added warning if header version is invalid
+
 ### changed
 * overhauled [README](./README.md)
 * replaced `termcolor` dependency with `nu-ansi-term`

@@ -2,6 +2,7 @@
 
 ## [unreleased]
 ### added
+* added man pages `smolbar(1)` and `smolbar(5)`
 * added warning if header version is invalid
 
 ### changed

@@ -17,6 +17,7 @@ rustPlatform.buildRustPackage rec {
 
   buildPhase = ''
 cd doc
+# TODO: fails unless documentation is already built (permission denied: scdoc < smolbar.1.scd > smolbar.1)
 make clean all
   '';
   installPhase = ''

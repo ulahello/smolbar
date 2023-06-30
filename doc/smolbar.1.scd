@@ -10,7 +10,9 @@ smolbar - smol status command for *sway*(1)
 
 # DESCRIPTION
 
-*smolbar* is a status command for the sway Wayland compositor.
+*smolbar* is a status command for the sway Wayland compositor. When
+run, *smolbar* will write JSON _Block_ objects to standard output, as
+per *swaybar-protocol*(7).
 
 To use it in your sway configuration, invoke _bar_ _status_command_ with
 _smolbar_.

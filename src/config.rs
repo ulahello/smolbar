@@ -42,7 +42,7 @@ impl TomlBar {
     pub fn current_smolbar_version() -> Version {
         env!("CARGO_PKG_VERSION")
             .parse()
-            .expect("Cargo sets correctly version information")
+            .expect("Cargo correctly sets version information")
     }
 }
 

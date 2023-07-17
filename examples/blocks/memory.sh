@@ -9,14 +9,14 @@ swap_used=$(printf '%s' "${parsed}" | sed "3q;d")
 swap_available=$(printf '%s' "${parsed}" | sed "4q;d")
 
 if [ "${1}" = "mem" ]; then
-    used="${mem_used}"
-    available="${mem_available}"
+	used="${mem_used}"
+	available="${mem_available}"
 elif [ "${1}" = "swap" ]; then
-    used="${swap_used}"
-    available="${swap_available}"
+	used="${swap_used}"
+	available="${swap_available}"
 else
-    echo "usage: ${0} mem|swap"
-    exit 1
+	echo "usage: ${0} mem|swap"
+	exit 1
 fi
 
 # full_text

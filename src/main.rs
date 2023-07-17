@@ -95,7 +95,7 @@ fn print_version<W: Write>(mut out: W) -> io::Result<()> {
 }
 
 fn print_license<W: Write>(mut out: W) -> io::Result<()> {
-    write!(out, "{}", include_str!("../doc/COPYRIGHT"))
+    write!(out, "{}", include_str!("../docs/COPYRIGHT"))
 }
 
 async fn try_main(args: Args) -> anyhow::Result<()> {

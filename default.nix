@@ -1,11 +1,9 @@
-{ pkgs, lib, rustPlatform }:
+{ lib, rustPlatform, scdoc, gnumake }:
 let manifest = (lib.importTOML ./Cargo.toml).package;
 in
 rustPlatform.buildRustPackage rec {
   pname = manifest.name;
   version = manifest.version;
-  cargoLock.lockFile = ./Cargo.lock;
-  src = lib.cleanSource ./.;
   meta = with lib; {
     description = manifest.description;
     license = manifest.license;
@@ -15,15 +13,12 @@ rustPlatform.buildRustPackage rec {
     badPlatforms = platforms.windows;
   };
 
-  buildPhase = ''
-cd doc
-# TODO: fails unless documentation is already built (permission denied: scdoc < smolbar.1.scd > smolbar.1)
-make clean all
+  cargoLock.lockFile = ./Cargo.lock;
+  src = lib.cleanSource ./.;
+
+  nativeBuildInputs = [ gnumake scdoc ];
+
+  postInstall = ''
+    cd doc && PREFIX="$out" make install
   '';
-  installPhase = ''
-cd "$src/doc" && PREFIX="$out" make install
-mkdir -p "$out/bin"
-cp "$src/target/release/smolbar" "$out/bin"
-  '';
-  nativeBuildInputs = with pkgs.buildPackages; [ cargo gnumake scdoc ];
 }

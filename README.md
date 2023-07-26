@@ -61,7 +61,7 @@ Note that `smolbar` has given new meaning to `cont_signal`, since the meaning de
 
 ## Configuration
 
-`smolbar` is configured in a TOML file.
+`smolbar` is configured through a TOML file.
 
 If `--config` is not specified as an argument, `smolbar` looks for a file named `config.toml` in `$XDG_CONFIG_HOME/smolbar` or `$HOME/.config/smolbar`.
 

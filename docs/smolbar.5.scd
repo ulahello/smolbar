@@ -6,7 +6,7 @@ smolbar - configuration file
 
 # DESCRIPTION
 
-*smolbar* is configured in a TOML file.
+*smolbar* is configured through a TOML file.
 
 # HEADER
 

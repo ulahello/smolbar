@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.8.2] - 2023-07-29
 ### added
 * added man pages `smolbar(1)` and `smolbar(5)`
 * added full and transitive copyright information to docs and `--license`

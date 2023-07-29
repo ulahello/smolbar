@@ -17,9 +17,9 @@ argh = { version = "0.1.10", default-features = false }
 libc = { version = "0.2.147", default-features = false }
 nu-ansi-term = { version = "0.48.0", default-features = false }
 semver = { version = "1.0.18", default-features = false, features = ["serde"] }
-serde = { version = "1.0.171", default-features = false }
-serde_derive = { version = "1.0.171", default-features = false }
-serde_json = { version = "1.0.103", default-features = false, features = ["std"] }
+serde = { version = "1.0.178", default-features = false }
+serde_derive = { version = "1.0.178", default-features = false }
+serde_json = { version = "1.0.104", default-features = false, features = ["std"] }
 signal-hook-registry = { version = "1.4.1", default-features = false }
 tokio = { version = "1.29.1", default-features = false, features = ["time", "signal", "process", "sync", "rt", "macros"] }
 tokio-util = { version = "0.7.8", default-features = false }

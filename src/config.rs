@@ -1,8 +1,6 @@
 // copyright (C) 2022-2023 Ula Shipman <ula.hello@mailbox.org>
 // licensed under GPL-3.0-or-later
 
-//! Configuration structures for the bar and its blocks.
-
 use anyhow::{anyhow, Context};
 use semver::{Version, VersionReq};
 use serde_derive::{Deserialize, Serialize};

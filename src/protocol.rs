@@ -1,8 +1,6 @@
 // copyright (C) 2022-2023 Ula Shipman <ula.hello@mailbox.org>
 // licensed under GPL-3.0-or-later
 
-//! Implementation of `swaybar-protocol(7)`.
-
 use serde_derive::{Deserialize, Serialize};
 
 use core::fmt;

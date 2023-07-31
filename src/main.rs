@@ -1,6 +1,8 @@
 // copyright (C) 2022-2023 Ula Shipman <ula.hello@mailbox.org>
 // licensed under GPL-3.0-or-later
 
+// TODO: testing?
+
 #![forbid(unsafe_code)]
 #![warn(clippy::pedantic, clippy::cargo)]
 

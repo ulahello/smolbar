@@ -154,7 +154,7 @@ async fn try_main(args: Args) -> anyhow::Result<()> {
     let config = Config::read_from_path(&path).context("failed to load config")?;
 
     /* bar runtime */
-    let (mut bar, _tx) = Bar::new(config);
+    let mut bar = Bar::new(config);
     bar.write_header()?;
 
     // start main loop

@@ -47,7 +47,7 @@ impl Bar {
     /* arbitrary, but not too high. this is only 1KiB of bar messages. */
     const CHANNEL_SIZE: usize = 1024;
 
-    pub fn new(config: Config) -> (Self, mpsc::Sender<BarMsg>) {
+    pub fn new(config: Config) -> Self {
         let (tx, rx) = mpsc::channel(Self::CHANNEL_SIZE);
 
         let mut blocks = Blocks::new(tx.clone());
@@ -60,19 +60,16 @@ impl Bar {
 
         let stdout = BufWriter::new(stdout().lock());
 
-        (
-            Self {
-                config,
-                blocks,
-                latest_blocks_hash: None,
-                first_header_hash: None,
-                rx,
-                tx: tx.clone(),
-                stdout,
-                signal_handles_created: true,
-            },
-            tx,
-        )
+        Self {
+            config,
+            blocks,
+            latest_blocks_hash: None,
+            first_header_hash: None,
+            rx,
+            tx: tx.clone(),
+            stdout,
+            signal_handles_created: true,
+        }
     }
 
     /// Send the configured [`Header`](crate::protocol::Header) through standard

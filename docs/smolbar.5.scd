@@ -44,7 +44,7 @@ file.
 
 [[ Key
 :- Type
-:< Description
+:[ Description
 |[ _command_dir_
 :  string
 :  sets the directory in which to execute the command (defined in
@@ -75,7 +75,7 @@ All local scopes are tables in the table array _block_.
 
 [[ Key
 :- Type
-:< Description
+:[ Description
 |[ _command_
 :  string
 :  path of command to execute in full for new content

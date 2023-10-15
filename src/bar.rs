@@ -277,25 +277,28 @@ impl Bar {
                     );
 
                     let sig_kind = SignalKind::from_raw(signum.as_raw());
-                    if let Ok(mut sig) = signal(sig_kind) {
-                        {
-                            let _enter = span.enter();
-                            tracing::trace!("signal is valid, listening");
-                        }
+                    match signal(sig_kind) {
+                        Ok(mut sig) => {
+                            {
+                                let _enter = span.enter();
+                                tracing::trace!("signal is valid, listening");
+                            }
 
-                        while let Some(()) = sig.recv().await {
-                            let _enter = span.enter();
-                            tracing::trace!("received signal, sending {action:?} to Bar");
-                            tx.send(action)
-                                .await
-                                .expect("signal handles must outlive Bar");
+                            while let Some(()) = sig.recv().await {
+                                let _enter = span.enter();
+                                tracing::trace!("received signal, sending {action:?} to Bar");
+                                tx.send(action)
+                                    .await
+                                    .expect("signal handles must outlive Bar");
+                            }
                         }
-                    } else {
-                        let _enter = span.enter();
-                        if signal_hook_registry::FORBIDDEN.contains(&signum.as_raw()) {
-                            tracing::warn!("signal is invalid");
-                        } else {
-                            tracing::error!("failed to register signal listener");
+                        Err(err) => {
+                            let _enter = span.enter();
+                            if signal_hook_registry::FORBIDDEN.contains(&signum.as_raw()) {
+                                tracing::warn!("signal is invalid");
+                            } else {
+                                tracing::error!("failed to register signal listener: {err}");
+                            }
                         }
                     }
                 });

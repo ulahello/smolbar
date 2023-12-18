@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+
+## [0.8.3] - 2023-12-18
 ### changed
 * if registering signal listener fails, show the error
 * bumped msrv to 1.67.1

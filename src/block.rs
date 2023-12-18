@@ -109,7 +109,7 @@ impl Block {
                 msg = field::Empty
             );
             tokio::select!(
-                _ = self.cancel.cancelled() => {
+                () = self.cancel.cancelled() => {
                     let _enter = span.enter();
                     tracing::trace!("shutting down");
                     for handle in [interval_handle, signal_handle] {
@@ -332,7 +332,7 @@ impl Block {
             match command.spawn() {
                 Ok(child) => {
                     tokio::select!(
-                        _ = self.cancel.cancelled() => {
+                        () = self.cancel.cancelled() => {
                             let _enter = span.enter();
                             tracing::trace!("command cancelled");
                         }

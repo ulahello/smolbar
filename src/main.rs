@@ -173,9 +173,7 @@ async fn await_cancellable<T>(handle: task::JoinHandle<T>) -> Option<T> {
                 err.is_panic() ^ err.is_cancelled(),
                 "JoinError must be either panicked or cancelled"
             );
-            if err.is_panic() {
-                panic!("task panicked: {}", err);
-            }
+            assert!(!err.is_panic(), "task panicked: {err}");
             None
         }
     }

@@ -72,7 +72,7 @@ impl Bar {
         }
     }
 
-    /// Send the configured [`Header`](crate::protocol::Header) through standard
+    /// Send the configured [`Header`] through standard
     /// output.
     ///
     /// # Errors

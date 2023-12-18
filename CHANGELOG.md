@@ -3,6 +3,7 @@
 ## [unreleased]
 ### changed
 * if registering signal listener fails, show the error
+* updated dependencies
 
 ## [0.8.2] - 2023-07-29
 ### added

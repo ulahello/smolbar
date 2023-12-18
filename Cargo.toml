@@ -15,7 +15,6 @@ categories = ["command-line-utilities"]
 anyhow = { version = "1.0.75", default-features = false, features = ["std"] }
 argh = { version = "0.1.12", default-features = false }
 libc = { version = "0.2.151", default-features = false }
-nu-ansi-term = { version = "0.49.0", default-features = false }
 semver = { version = "1.0.20", default-features = false, features = ["serde"] }
 serde = { version = "1.0.193", default-features = false }
 serde_derive = { version = "1.0.193", default-features = false }

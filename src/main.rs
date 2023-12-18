@@ -19,7 +19,6 @@ extern crate alloc;
 
 use anyhow::Context;
 use argh::FromArgs;
-use nu_ansi_term::Color;
 use tokio::task;
 use tracing::{span, Level};
 
@@ -55,16 +54,12 @@ struct Args {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
-    #[allow(clippy::needless_pass_by_value)]
-    fn pretty_err<W: Write>(mut out: W, err: anyhow::Error) -> io::Result<()> {
-        writeln!(out, "{} {err}", Color::Red.paint("error:"))?;
-        if err.chain().nth(1).is_some() {
-            writeln!(out, "{}", Color::Red.paint("because:"))?;
-        }
+    fn pretty_err(err: &anyhow::Error) {
+        tracing::error!("{err}");
+        tracing::info!("because...");
         for cause in err.chain().skip(1) {
-            writeln!(out, "  {cause}")?;
+            tracing::info!("...{cause}");
         }
-        out.flush()
     }
 
     let args: Args = argh::from_env();
@@ -80,7 +75,7 @@ async fn main() -> ExitCode {
 
     #[allow(let_underscore_drop)]
     if let Err(err) = try_main(args).await {
-        _ = pretty_err(stderr(), err);
+        pretty_err(&err);
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS

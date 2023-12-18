@@ -11,6 +11,9 @@ license = "GPL-3.0-or-later"
 keywords = ["sway", "swaybar"]
 categories = ["command-line-utilities"]
 
+[badges.maintenance]
+status = "passively-maintained"
+
 [dependencies]
 anyhow = { version = "1.0.75", default-features = false, features = ["std"] }
 argh = { version = "0.1.12", default-features = false }

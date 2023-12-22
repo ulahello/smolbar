@@ -247,11 +247,14 @@ impl FromStr for Align {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
-        match s.to_lowercase().as_ref() {
-            "left" => Ok(Self::Left),
-            "right" => Ok(Self::Right),
-            "center" => Ok(Self::Center),
-            _ => Err(()),
+        if s.eq_ignore_ascii_case("left") {
+            Ok(Self::Left)
+        } else if s.eq_ignore_ascii_case("right") {
+            Ok(Self::Right)
+        } else if s.eq_ignore_ascii_case("center") {
+            Ok(Self::Center)
+        } else {
+            Err(())
         }
     }
 }

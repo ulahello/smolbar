@@ -265,11 +265,9 @@ impl Block {
 
         /* full text is prefixed by `prefix`, postfixed by `postfix` field in
          * toml */
-        if let Some(ref prefix) = toml.prefix {
-            if let Some(ref full_text) = body.full_text {
-                let mut prefix = prefix.to_string();
-                prefix.push_str(full_text);
-                body.full_text = Some(prefix);
+        if let Some(ref mut full_text) = body.full_text {
+            if let Some(ref prefix) = toml.prefix {
+                full_text.insert_str(0, prefix);
             }
         }
 

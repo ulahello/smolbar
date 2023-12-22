@@ -2,6 +2,7 @@
 // licensed under GPL-3.0-or-later
 
 use anyhow::{anyhow, Context};
+use cowstr::CowStr;
 use semver::{Version, VersionReq};
 use serde_derive::{Deserialize, Serialize};
 use tracing::{span, Level};
@@ -51,9 +52,9 @@ pub struct TomlBlock {
     /// Command to execute to configure body at `immediate` scope
     pub command: Option<String>,
     /// String prefixing `full_text`
-    pub prefix: Option<String>,
+    pub prefix: Option<CowStr>,
     /// String appended to `full_text`
-    pub postfix: Option<String>,
+    pub postfix: Option<CowStr>,
     /// Interval, in seconds, at which to refresh the block
     ///
     /// If the interval is negative, overflows
@@ -130,7 +131,7 @@ impl Config {
         /* HACK: if full_text is not defined, we still want prefix and postfix
          * to apply to it (it being "") */
         if toml.body.full_text.is_none() {
-            toml.body.full_text = Some(String::new());
+            toml.body.full_text = Some(CowStr::new());
         }
 
         /* check smolbar version */

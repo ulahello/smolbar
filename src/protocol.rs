@@ -1,6 +1,7 @@
 // copyright (C) 2022-2023 Ula Shipman <ula.hello@mailbox.org>
 // licensed under GPL-3.0-or-later
 
+use cowstr::CowStr;
 use serde_derive::{Deserialize, Serialize};
 
 use core::fmt;
@@ -116,20 +117,20 @@ impl Default for Header {
 pub struct Body {
     /// "The text that will be displayed. If missing, the block will be skipped."
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub full_text: Option<String>,
+    pub full_text: Option<CowStr>,
     /// "If given and the text needs to be shortened due to space, this will be
     /// displayed instead of full_text"
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub short_text: Option<String>,
+    pub short_text: Option<CowStr>,
     /// "The text color to use in #RRGGBBAA or #RRGGBB notation"
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
+    pub color: Option<CowStr>,
     /// "The background color for the block in #RRGGBBAA or #RRGGBB notation"
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub background: Option<String>,
+    pub background: Option<CowStr>,
     /// "The border color for the block in #RRGGBBAA or #RRGGBB notation"
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub border: Option<String>,
+    pub border: Option<CowStr>,
     /// "The height in pixels of the top border. The default is 1"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub border_top: Option<u32>,
@@ -146,7 +147,7 @@ pub struct Body {
     /// pixels or a string can be given to allow for it to be calculated based
     /// on the width of the string."
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub min_width: Option<String>,
+    pub min_width: Option<CowStr>,
     /// "If the text does not span the full width of the block, this specifies
     /// how the text should be aligned inside of the block. This can be left
     /// (default), right, or center."
@@ -155,12 +156,12 @@ pub struct Body {
     /// "A name for the block. This is only used to identify the block for click
     /// events. If set, each block should have a unique name and instance pair."
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: Option<CowStr>,
     /// "The instance of the name for the block. This is only used to identify
     /// the block for click events. If set, each block should have a unique name
     /// and instance pair."
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub instance: Option<String>,
+    pub instance: Option<CowStr>,
     /// "Whether the block should be displayed as urgent. Currently swaybar
     /// utilizes the colors set in the sway config for urgent workspace buttons.
     /// See sway-bar(5) for more information on bar color configuration."
@@ -289,9 +290,9 @@ impl FromStr for Markup {
 #[serde(deny_unknown_fields)]
 pub struct ClickEvent {
     /// "The name of the block, if set"
-    pub name: Option<String>,
+    pub name: Option<CowStr>,
     /// "The instance of the block, if set"
-    pub instance: Option<String>,
+    pub instance: Option<CowStr>,
     /// "The x location that the click occurred at"
     pub x: i32,
     /// "The y location that the click occurred at"

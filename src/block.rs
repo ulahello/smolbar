@@ -154,7 +154,6 @@ impl Block {
                 },
                 None => None,
             }
-            // TODO: avoid cloning strings all the time
             .or_else(|| local.clone())
             .or_else(|| global.clone());
         }

@@ -1,6 +1,8 @@
 # changelog
 
 ## [unreleased]
+### fixed
+* handle one possible allocation error during config reading
 
 ## [0.8.3] - 2023-12-18
 ### changed

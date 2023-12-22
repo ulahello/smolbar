@@ -108,7 +108,10 @@ impl Config {
                 .map(|metadata| metadata.len())
                 .and_then(|len| usize::try_from(len).ok())
                 .unwrap_or(0);
-            let mut bytes = Vec::with_capacity(file_size);
+            let mut bytes = Vec::new();
+            bytes
+                .try_reserve(file_size)
+                .context("failed to allocate memory for config file")?;
             file.read_to_end(&mut bytes)
                 .context("failed to read config file")?;
             let utf8 = str::from_utf8(&bytes).context("invalid utf-8")?;

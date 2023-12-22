@@ -51,7 +51,7 @@ impl Bar {
         let (tx, rx) = mpsc::channel(Self::CHANNEL_SIZE);
 
         let mut blocks = Blocks::new(tx.clone());
-        // TODO: avoid cloning
+        // TODO: avoid cloning. only part of config we need to read later is the header.
         blocks.add_all(
             config.toml.blocks.iter().cloned(),
             Arc::new(config.toml.body.clone()),
@@ -127,7 +127,6 @@ impl Bar {
 
         self.blocks.remove_all().await;
         self.config = new_config;
-        // TODO: avoid cloning
         self.blocks.add_all(
             self.config.toml.blocks.iter().cloned(),
             Arc::new(self.config.toml.body.clone()),

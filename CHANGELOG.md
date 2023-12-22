@@ -4,6 +4,9 @@
 ### fixed
 * handle one possible allocation error during config reading
 
+### changed
+* reduced memory allocations during reloads
+
 ## [0.8.3] - 2023-12-18
 ### changed
 * if registering signal listener fails, show the error

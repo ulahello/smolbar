@@ -12,6 +12,7 @@ use alloc::sync::Arc;
 use core::hash::{Hash as HashTrait, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use std::io::{stdout, BufWriter, StdoutLock, Write};
+use std::path::PathBuf;
 
 use crate::blocks::Blocks;
 use crate::config::Config;
@@ -29,7 +30,8 @@ pub enum BarMsg {
 
 #[derive(Debug)]
 pub struct Bar {
-    config: Config,
+    header: Header,
+    config_path: PathBuf,
     blocks: Blocks,
 
     latest_blocks_hash: Option<Hash>,
@@ -51,17 +53,17 @@ impl Bar {
         let (tx, rx) = mpsc::channel(Self::CHANNEL_SIZE);
 
         let mut blocks = Blocks::new(tx.clone());
-        // TODO: avoid cloning. only part of config we need to read later is the header.
         blocks.add_all(
-            config.toml.blocks.iter().cloned(),
-            Arc::new(config.toml.body.clone()),
-            Arc::new(config.command_dir.clone()),
+            config.toml.blocks.into_iter(),
+            Arc::new(config.toml.body),
+            Arc::new(config.command_dir),
         );
 
         let stdout = BufWriter::new(stdout().lock());
 
         Self {
-            config,
+            header: config.toml.header,
+            config_path: config.path,
             blocks,
             latest_blocks_hash: None,
             first_header_hash: None,
@@ -79,7 +81,7 @@ impl Bar {
     ///
     /// Writing to standard output may fail.
     pub fn write_header(&mut self) -> anyhow::Result<()> {
-        let header = self.config.toml.header;
+        let header = self.header;
         let span = span!(
             Level::INFO,
             "bar_send_header",
@@ -98,14 +100,14 @@ impl Bar {
         }
         let _enter = span.enter();
 
-        ser::to_writer(&mut self.stdout, &self.config.toml.header)?;
+        ser::to_writer(&mut self.stdout, &self.header)?;
         write!(self.stdout, "\n[")?;
         self.stdout.flush()?;
 
         tracing::trace!("sent header");
 
         if self.first_header_hash.is_none() {
-            let hash = Hash::new(&self.config.toml.header);
+            let hash = Hash::new(&self.header);
             self.first_header_hash = Some(hash);
         }
 
@@ -114,7 +116,7 @@ impl Bar {
 
     pub async fn reload(&mut self) -> anyhow::Result<()> {
         let new_config =
-            Config::read_from_path(&self.config.path).context("failed to reload config")?;
+            Config::read_from_path(&self.config_path).context("failed to reload config")?;
 
         if let Some(old) = self.first_header_hash {
             let new = Hash::new(&new_config.toml.header);
@@ -126,11 +128,11 @@ impl Bar {
         }
 
         self.blocks.remove_all().await;
-        self.config = new_config;
+        self.config_path = new_config.path;
         self.blocks.add_all(
-            self.config.toml.blocks.iter().cloned(),
-            Arc::new(self.config.toml.body.clone()),
-            Arc::new(self.config.command_dir.clone()),
+            new_config.toml.blocks.into_iter(),
+            Arc::new(new_config.toml.body),
+            Arc::new(new_config.command_dir),
         );
         Ok(())
     }
@@ -253,7 +255,7 @@ impl Bar {
         self.signal_handles_created.then(|| {
             self.signal_handles_created = true;
             let mut handles = Vec::with_capacity(2);
-            let header = self.config.toml.header;
+            let header = self.header;
             for (signum, action, signame) in [
                 (
                     header.cont_signal.unwrap_or(Header::DEFAULT_CONT_SIG),

@@ -7,6 +7,7 @@
 ### changed
 * reduced memory allocations during reloads
 * reduced needless memory allocations during block regeneration
+* updated dependencies
 
 ## [0.8.3] - 2023-12-18
 ### changed

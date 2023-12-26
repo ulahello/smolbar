@@ -15,7 +15,7 @@ categories = ["command-line-utilities"]
 status = "passively-maintained"
 
 [dependencies]
-anyhow = { version = "1.0.76", default-features = false, features = ["std"] }
+anyhow = { version = "1.0.77", default-features = false, features = ["std"] }
 argh = { version = "0.1.12", default-features = false }
 cowstr = { version = "1.2.0", features = ["serde"] }
 libc = { version = "0.2.151", default-features = false }

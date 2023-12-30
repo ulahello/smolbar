@@ -160,6 +160,8 @@ async fn try_main(args: Args) -> anyhow::Result<()> {
     Ok(())
 }
 
+// used after JoinHandle.abort() as an equivalent to unwrapping but you also
+// just cancelled it so that's not an unexpected error.
 async fn await_cancellable<T>(handle: task::JoinHandle<T>) -> Option<T> {
     match handle.await {
         Ok(t) => Some(t),

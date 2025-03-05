@@ -1,6 +1,9 @@
 # changelog
 
 ## [unreleased]
+## [0.8.5] - 2025-03-05
+### changed
+* repository transfered to new account (no other substantial changes)
 
 ## [0.8.4] - 2023-12-22
 ### fixed

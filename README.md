@@ -1,7 +1,7 @@
-# `smolbar`
+# `smolbar` is unmaintained
 
-[![Crates.io](https://img.shields.io/crates/v/smolbar)](https://crates.io/crates/smolbar)
-[![Crates.io](https://img.shields.io/crates/l/smolbar)](https://crates.io/crates/smolbar)
+**smolbar is no longer maintained, but was complete in 2023.**
+I recommend using [i3blocks](https://github.com/vivien/i3blocks) instead.
 
 `smolbar` is a smol status command for [sway](https://github.com/swaywm/sway).
 
@@ -214,13 +214,6 @@ If an attacker can write to the configuration file, or to *any* of the files def
 It is **your responsibility** to prevent this.
 It's a good idea to ensure that no other users are granted write permissions for the configuration or its commands.
 However, measures you take will **depend on your situation**.
-
-## Contributions
-
-Tickets and improvements are welcome and appreciated!
-You can find the [issue tracker](https://github.com/ulahello/smolbar/issues) on GitHub.
-
-Contributions will be licensed under the same license as `smolbar`.
 
 ## License
 

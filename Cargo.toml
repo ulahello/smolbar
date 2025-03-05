@@ -12,7 +12,7 @@ keywords = ["sway", "swaybar"]
 categories = ["command-line-utilities"]
 
 [badges.maintenance]
-status = "passively-maintained"
+status = "as-is"
 
 [dependencies]
 anyhow = { version = "1.0.80", default-features = false, features = ["std"] }

@@ -144,8 +144,8 @@ impl Block {
         fn update<T: Clone + FromStr>(
             field: &mut Option<T>,
             immediate: Option<&str>,
-            local: &Option<T>,
-            global: &Option<T>,
+            local: Option<&T>,
+            global: Option<&T>,
         ) {
             *field = match immediate {
                 Some(val) => match val.parse() {
@@ -154,8 +154,8 @@ impl Block {
                 },
                 None => None,
             }
-            .or_else(|| local.clone())
-            .or_else(|| global.clone());
+            .or_else(|| local.cloned())
+            .or_else(|| global.cloned());
         }
 
         // compute hash of old body to later compare with new body
@@ -167,99 +167,104 @@ impl Block {
         update(
             &mut body.full_text,
             lines.next(),
-            &toml.body.full_text,
-            &global.full_text,
+            toml.body.full_text.as_ref(),
+            global.full_text.as_ref(),
         );
         update(
             &mut body.short_text,
             lines.next(),
-            &toml.body.short_text,
-            &global.short_text,
+            toml.body.short_text.as_ref(),
+            global.short_text.as_ref(),
         );
         update(
             &mut body.color,
             lines.next(),
-            &toml.body.color,
-            &global.color,
+            toml.body.color.as_ref(),
+            global.color.as_ref(),
         );
         update(
             &mut body.background,
             lines.next(),
-            &toml.body.background,
-            &global.background,
+            toml.body.background.as_ref(),
+            global.background.as_ref(),
         );
         update(
             &mut body.border,
             lines.next(),
-            &toml.body.border,
-            &global.border,
+            toml.body.border.as_ref(),
+            global.border.as_ref(),
         );
         update(
             &mut body.border_top,
             lines.next(),
-            &toml.body.border_top,
-            &global.border_top,
+            toml.body.border_top.as_ref(),
+            global.border_top.as_ref(),
         );
         update(
             &mut body.border_bottom,
             lines.next(),
-            &toml.body.border_bottom,
-            &global.border_bottom,
+            toml.body.border_bottom.as_ref(),
+            global.border_bottom.as_ref(),
         );
         update(
             &mut body.border_left,
             lines.next(),
-            &toml.body.border_left,
-            &global.border_left,
+            toml.body.border_left.as_ref(),
+            global.border_left.as_ref(),
         );
         update(
             &mut body.border_right,
             lines.next(),
-            &toml.body.border_right,
-            &global.border_right,
+            toml.body.border_right.as_ref(),
+            global.border_right.as_ref(),
         );
         update(
             &mut body.min_width,
             lines.next(),
-            &toml.body.min_width,
-            &global.min_width,
+            toml.body.min_width.as_ref(),
+            global.min_width.as_ref(),
         );
         update(
             &mut body.align,
             lines.next(),
-            &toml.body.align,
-            &global.align,
+            toml.body.align.as_ref(),
+            global.align.as_ref(),
         );
-        update(&mut body.name, lines.next(), &toml.body.name, &global.name);
+        update(
+            &mut body.name,
+            lines.next(),
+            toml.body.name.as_ref(),
+            global.name.as_ref(),
+        );
         update(
             &mut body.instance,
             lines.next(),
-            &toml.body.instance,
-            &global.instance,
+            toml.body.instance.as_ref(),
+            global.instance.as_ref(),
         );
         update(
             &mut body.urgent,
             lines.next(),
-            &toml.body.urgent,
-            &global.urgent,
+            toml.body.urgent.as_ref(),
+            global.urgent.as_ref(),
         );
         update(
             &mut body.separator,
             lines.next(),
-            &toml.body.separator,
-            &global.separator,
+            toml.body.separator.as_ref(),
+            global.separator.as_ref(),
         );
         update(
             &mut body.separator_block_width,
             lines.next(),
-            &toml.body.separator_block_width,
-            &global.separator_block_width,
+            toml.body.separator_block_width.as_ref(),
+            global.separator_block_width.as_ref(),
         );
         update(
             &mut body.markup,
             lines.next(),
-            &toml.body.markup,
-            &global.markup,
+            toml.body.markup.as_ref(),
+            global.markup.as_ref(),
         );
 
         /* full text is prefixed by `prefix`, postfixed by `postfix` field in

@@ -33,6 +33,7 @@ use crate::bar::Bar;
 use crate::config::Config;
 
 /// smol status command for sway
+#[allow(clippy::doc_markdown)]
 #[derive(FromArgs, Debug)]
 struct Args {
     /// path to configuration file [default: config.toml in $XDG_CONFIG_HOME/smolbar or $HOME/.config/smolbar]

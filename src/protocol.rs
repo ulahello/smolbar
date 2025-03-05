@@ -119,7 +119,7 @@ pub struct Body {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub full_text: Option<CowStr>,
     /// "If given and the text needs to be shortened due to space, this will be
-    /// displayed instead of full_text"
+    /// displayed instead of `full_text`"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub short_text: Option<CowStr>,
     /// "The text color to use in #RRGGBBAA or #RRGGBB notation"
